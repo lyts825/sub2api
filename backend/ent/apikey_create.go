@@ -307,6 +307,34 @@ func (_c *APIKeyCreate) SetNillableWindow7dStart(v *time.Time) *APIKeyCreate {
 	return _c
 }
 
+// SetTokenQuota sets the "token_quota" field.
+func (_c *APIKeyCreate) SetTokenQuota(v int64) *APIKeyCreate {
+	_c.mutation.SetTokenQuota(v)
+	return _c
+}
+
+// SetNillableTokenQuota sets the "token_quota" field if the given value is not nil.
+func (_c *APIKeyCreate) SetNillableTokenQuota(v *int64) *APIKeyCreate {
+	if v != nil {
+		_c.SetTokenQuota(*v)
+	}
+	return _c
+}
+
+// SetTokenQuotaUsed sets the "token_quota_used" field.
+func (_c *APIKeyCreate) SetTokenQuotaUsed(v int64) *APIKeyCreate {
+	_c.mutation.SetTokenQuotaUsed(v)
+	return _c
+}
+
+// SetNillableTokenQuotaUsed sets the "token_quota_used" field if the given value is not nil.
+func (_c *APIKeyCreate) SetNillableTokenQuotaUsed(v *int64) *APIKeyCreate {
+	if v != nil {
+		_c.SetTokenQuotaUsed(*v)
+	}
+	return _c
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (_c *APIKeyCreate) SetUser(v *User) *APIKeyCreate {
 	return _c.SetUserID(v.ID)
@@ -419,6 +447,14 @@ func (_c *APIKeyCreate) defaults() error {
 		v := apikey.DefaultUsage7d
 		_c.mutation.SetUsage7d(v)
 	}
+	if _, ok := _c.mutation.TokenQuota(); !ok {
+		v := apikey.DefaultTokenQuota
+		_c.mutation.SetTokenQuota(v)
+	}
+	if _, ok := _c.mutation.TokenQuotaUsed(); !ok {
+		v := apikey.DefaultTokenQuotaUsed
+		_c.mutation.SetTokenQuotaUsed(v)
+	}
 	return nil
 }
 
@@ -480,6 +516,22 @@ func (_c *APIKeyCreate) check() error {
 	}
 	if _, ok := _c.mutation.Usage7d(); !ok {
 		return &ValidationError{Name: "usage_7d", err: errors.New(`ent: missing required field "APIKey.usage_7d"`)}
+	}
+	if _, ok := _c.mutation.TokenQuota(); !ok {
+		return &ValidationError{Name: "token_quota", err: errors.New(`ent: missing required field "APIKey.token_quota"`)}
+	}
+	if v, ok := _c.mutation.TokenQuota(); ok {
+		if err := apikey.TokenQuotaValidator(v); err != nil {
+			return &ValidationError{Name: "token_quota", err: fmt.Errorf(`ent: validator failed for field "APIKey.token_quota": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.TokenQuotaUsed(); !ok {
+		return &ValidationError{Name: "token_quota_used", err: errors.New(`ent: missing required field "APIKey.token_quota_used"`)}
+	}
+	if v, ok := _c.mutation.TokenQuotaUsed(); ok {
+		if err := apikey.TokenQuotaUsedValidator(v); err != nil {
+			return &ValidationError{Name: "token_quota_used", err: fmt.Errorf(`ent: validator failed for field "APIKey.token_quota_used": %w`, err)}
+		}
 	}
 	if len(_c.mutation.UserIDs()) == 0 {
 		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "APIKey.user"`)}
@@ -594,6 +646,14 @@ func (_c *APIKeyCreate) createSpec() (*APIKey, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Window7dStart(); ok {
 		_spec.SetField(apikey.FieldWindow7dStart, field.TypeTime, value)
 		_node.Window7dStart = &value
+	}
+	if value, ok := _c.mutation.TokenQuota(); ok {
+		_spec.SetField(apikey.FieldTokenQuota, field.TypeInt64, value)
+		_node.TokenQuota = value
+	}
+	if value, ok := _c.mutation.TokenQuotaUsed(); ok {
+		_spec.SetField(apikey.FieldTokenQuotaUsed, field.TypeInt64, value)
+		_node.TokenQuotaUsed = value
 	}
 	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -1060,6 +1120,42 @@ func (u *APIKeyUpsert) UpdateWindow7dStart() *APIKeyUpsert {
 // ClearWindow7dStart clears the value of the "window_7d_start" field.
 func (u *APIKeyUpsert) ClearWindow7dStart() *APIKeyUpsert {
 	u.SetNull(apikey.FieldWindow7dStart)
+	return u
+}
+
+// SetTokenQuota sets the "token_quota" field.
+func (u *APIKeyUpsert) SetTokenQuota(v int64) *APIKeyUpsert {
+	u.Set(apikey.FieldTokenQuota, v)
+	return u
+}
+
+// UpdateTokenQuota sets the "token_quota" field to the value that was provided on create.
+func (u *APIKeyUpsert) UpdateTokenQuota() *APIKeyUpsert {
+	u.SetExcluded(apikey.FieldTokenQuota)
+	return u
+}
+
+// AddTokenQuota adds v to the "token_quota" field.
+func (u *APIKeyUpsert) AddTokenQuota(v int64) *APIKeyUpsert {
+	u.Add(apikey.FieldTokenQuota, v)
+	return u
+}
+
+// SetTokenQuotaUsed sets the "token_quota_used" field.
+func (u *APIKeyUpsert) SetTokenQuotaUsed(v int64) *APIKeyUpsert {
+	u.Set(apikey.FieldTokenQuotaUsed, v)
+	return u
+}
+
+// UpdateTokenQuotaUsed sets the "token_quota_used" field to the value that was provided on create.
+func (u *APIKeyUpsert) UpdateTokenQuotaUsed() *APIKeyUpsert {
+	u.SetExcluded(apikey.FieldTokenQuotaUsed)
+	return u
+}
+
+// AddTokenQuotaUsed adds v to the "token_quota_used" field.
+func (u *APIKeyUpsert) AddTokenQuotaUsed(v int64) *APIKeyUpsert {
+	u.Add(apikey.FieldTokenQuotaUsed, v)
 	return u
 }
 
@@ -1532,6 +1628,48 @@ func (u *APIKeyUpsertOne) UpdateWindow7dStart() *APIKeyUpsertOne {
 func (u *APIKeyUpsertOne) ClearWindow7dStart() *APIKeyUpsertOne {
 	return u.Update(func(s *APIKeyUpsert) {
 		s.ClearWindow7dStart()
+	})
+}
+
+// SetTokenQuota sets the "token_quota" field.
+func (u *APIKeyUpsertOne) SetTokenQuota(v int64) *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetTokenQuota(v)
+	})
+}
+
+// AddTokenQuota adds v to the "token_quota" field.
+func (u *APIKeyUpsertOne) AddTokenQuota(v int64) *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.AddTokenQuota(v)
+	})
+}
+
+// UpdateTokenQuota sets the "token_quota" field to the value that was provided on create.
+func (u *APIKeyUpsertOne) UpdateTokenQuota() *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateTokenQuota()
+	})
+}
+
+// SetTokenQuotaUsed sets the "token_quota_used" field.
+func (u *APIKeyUpsertOne) SetTokenQuotaUsed(v int64) *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetTokenQuotaUsed(v)
+	})
+}
+
+// AddTokenQuotaUsed adds v to the "token_quota_used" field.
+func (u *APIKeyUpsertOne) AddTokenQuotaUsed(v int64) *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.AddTokenQuotaUsed(v)
+	})
+}
+
+// UpdateTokenQuotaUsed sets the "token_quota_used" field to the value that was provided on create.
+func (u *APIKeyUpsertOne) UpdateTokenQuotaUsed() *APIKeyUpsertOne {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateTokenQuotaUsed()
 	})
 }
 
@@ -2170,6 +2308,48 @@ func (u *APIKeyUpsertBulk) UpdateWindow7dStart() *APIKeyUpsertBulk {
 func (u *APIKeyUpsertBulk) ClearWindow7dStart() *APIKeyUpsertBulk {
 	return u.Update(func(s *APIKeyUpsert) {
 		s.ClearWindow7dStart()
+	})
+}
+
+// SetTokenQuota sets the "token_quota" field.
+func (u *APIKeyUpsertBulk) SetTokenQuota(v int64) *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetTokenQuota(v)
+	})
+}
+
+// AddTokenQuota adds v to the "token_quota" field.
+func (u *APIKeyUpsertBulk) AddTokenQuota(v int64) *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.AddTokenQuota(v)
+	})
+}
+
+// UpdateTokenQuota sets the "token_quota" field to the value that was provided on create.
+func (u *APIKeyUpsertBulk) UpdateTokenQuota() *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateTokenQuota()
+	})
+}
+
+// SetTokenQuotaUsed sets the "token_quota_used" field.
+func (u *APIKeyUpsertBulk) SetTokenQuotaUsed(v int64) *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.SetTokenQuotaUsed(v)
+	})
+}
+
+// AddTokenQuotaUsed adds v to the "token_quota_used" field.
+func (u *APIKeyUpsertBulk) AddTokenQuotaUsed(v int64) *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.AddTokenQuotaUsed(v)
+	})
+}
+
+// UpdateTokenQuotaUsed sets the "token_quota_used" field to the value that was provided on create.
+func (u *APIKeyUpsertBulk) UpdateTokenQuotaUsed() *APIKeyUpsertBulk {
+	return u.Update(func(s *APIKeyUpsert) {
+		s.UpdateTokenQuotaUsed()
 	})
 }
 

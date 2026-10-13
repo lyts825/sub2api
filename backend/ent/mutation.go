@@ -108,51 +108,55 @@ const (
 // APIKeyMutation represents an operation that mutates the APIKey nodes in the graph.
 type APIKeyMutation struct {
 	config
-	op                 Op
-	typ                string
-	id                 *int64
-	created_at         *time.Time
-	updated_at         *time.Time
-	deleted_at         *time.Time
-	key                *string
-	name               *string
-	status             *string
-	last_used_at       *time.Time
-	ip_whitelist       *[]string
-	appendip_whitelist []string
-	ip_blacklist       *[]string
-	appendip_blacklist []string
-	quota              *float64
-	addquota           *float64
-	quota_used         *float64
-	addquota_used      *float64
-	expires_at         *time.Time
-	rate_limit_5h      *float64
-	addrate_limit_5h   *float64
-	rate_limit_1d      *float64
-	addrate_limit_1d   *float64
-	rate_limit_7d      *float64
-	addrate_limit_7d   *float64
-	usage_5h           *float64
-	addusage_5h        *float64
-	usage_1d           *float64
-	addusage_1d        *float64
-	usage_7d           *float64
-	addusage_7d        *float64
-	window_5h_start    *time.Time
-	window_1d_start    *time.Time
-	window_7d_start    *time.Time
-	clearedFields      map[string]struct{}
-	user               *int64
-	cleareduser        bool
-	group              *int64
-	clearedgroup       bool
-	usage_logs         map[int64]struct{}
-	removedusage_logs  map[int64]struct{}
-	clearedusage_logs  bool
-	done               bool
-	oldValue           func(context.Context) (*APIKey, error)
-	predicates         []predicate.APIKey
+	op                  Op
+	typ                 string
+	id                  *int64
+	created_at          *time.Time
+	updated_at          *time.Time
+	deleted_at          *time.Time
+	key                 *string
+	name                *string
+	status              *string
+	last_used_at        *time.Time
+	ip_whitelist        *[]string
+	appendip_whitelist  []string
+	ip_blacklist        *[]string
+	appendip_blacklist  []string
+	quota               *float64
+	addquota            *float64
+	quota_used          *float64
+	addquota_used       *float64
+	expires_at          *time.Time
+	rate_limit_5h       *float64
+	addrate_limit_5h    *float64
+	rate_limit_1d       *float64
+	addrate_limit_1d    *float64
+	rate_limit_7d       *float64
+	addrate_limit_7d    *float64
+	usage_5h            *float64
+	addusage_5h         *float64
+	usage_1d            *float64
+	addusage_1d         *float64
+	usage_7d            *float64
+	addusage_7d         *float64
+	window_5h_start     *time.Time
+	window_1d_start     *time.Time
+	window_7d_start     *time.Time
+	token_quota         *int64
+	addtoken_quota      *int64
+	token_quota_used    *int64
+	addtoken_quota_used *int64
+	clearedFields       map[string]struct{}
+	user                *int64
+	cleareduser         bool
+	group               *int64
+	clearedgroup        bool
+	usage_logs          map[int64]struct{}
+	removedusage_logs   map[int64]struct{}
+	clearedusage_logs   bool
+	done                bool
+	oldValue            func(context.Context) (*APIKey, error)
+	predicates          []predicate.APIKey
 }
 
 var _ ent.Mutation = (*APIKeyMutation)(nil)
@@ -1390,6 +1394,118 @@ func (m *APIKeyMutation) ResetWindow7dStart() {
 	delete(m.clearedFields, apikey.FieldWindow7dStart)
 }
 
+// SetTokenQuota sets the "token_quota" field.
+func (m *APIKeyMutation) SetTokenQuota(i int64) {
+	m.token_quota = &i
+	m.addtoken_quota = nil
+}
+
+// TokenQuota returns the value of the "token_quota" field in the mutation.
+func (m *APIKeyMutation) TokenQuota() (r int64, exists bool) {
+	v := m.token_quota
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTokenQuota returns the old "token_quota" field's value of the APIKey entity.
+// If the APIKey object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *APIKeyMutation) OldTokenQuota(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTokenQuota is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTokenQuota requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTokenQuota: %w", err)
+	}
+	return oldValue.TokenQuota, nil
+}
+
+// AddTokenQuota adds i to the "token_quota" field.
+func (m *APIKeyMutation) AddTokenQuota(i int64) {
+	if m.addtoken_quota != nil {
+		*m.addtoken_quota += i
+	} else {
+		m.addtoken_quota = &i
+	}
+}
+
+// AddedTokenQuota returns the value that was added to the "token_quota" field in this mutation.
+func (m *APIKeyMutation) AddedTokenQuota() (r int64, exists bool) {
+	v := m.addtoken_quota
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTokenQuota resets all changes to the "token_quota" field.
+func (m *APIKeyMutation) ResetTokenQuota() {
+	m.token_quota = nil
+	m.addtoken_quota = nil
+}
+
+// SetTokenQuotaUsed sets the "token_quota_used" field.
+func (m *APIKeyMutation) SetTokenQuotaUsed(i int64) {
+	m.token_quota_used = &i
+	m.addtoken_quota_used = nil
+}
+
+// TokenQuotaUsed returns the value of the "token_quota_used" field in the mutation.
+func (m *APIKeyMutation) TokenQuotaUsed() (r int64, exists bool) {
+	v := m.token_quota_used
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTokenQuotaUsed returns the old "token_quota_used" field's value of the APIKey entity.
+// If the APIKey object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *APIKeyMutation) OldTokenQuotaUsed(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTokenQuotaUsed is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTokenQuotaUsed requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTokenQuotaUsed: %w", err)
+	}
+	return oldValue.TokenQuotaUsed, nil
+}
+
+// AddTokenQuotaUsed adds i to the "token_quota_used" field.
+func (m *APIKeyMutation) AddTokenQuotaUsed(i int64) {
+	if m.addtoken_quota_used != nil {
+		*m.addtoken_quota_used += i
+	} else {
+		m.addtoken_quota_used = &i
+	}
+}
+
+// AddedTokenQuotaUsed returns the value that was added to the "token_quota_used" field in this mutation.
+func (m *APIKeyMutation) AddedTokenQuotaUsed() (r int64, exists bool) {
+	v := m.addtoken_quota_used
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTokenQuotaUsed resets all changes to the "token_quota_used" field.
+func (m *APIKeyMutation) ResetTokenQuotaUsed() {
+	m.token_quota_used = nil
+	m.addtoken_quota_used = nil
+}
+
 // ClearUser clears the "user" edge to the User entity.
 func (m *APIKeyMutation) ClearUser() {
 	m.cleareduser = true
@@ -1532,7 +1648,7 @@ func (m *APIKeyMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *APIKeyMutation) Fields() []string {
-	fields := make([]string, 0, 23)
+	fields := make([]string, 0, 25)
 	if m.created_at != nil {
 		fields = append(fields, apikey.FieldCreatedAt)
 	}
@@ -1602,6 +1718,12 @@ func (m *APIKeyMutation) Fields() []string {
 	if m.window_7d_start != nil {
 		fields = append(fields, apikey.FieldWindow7dStart)
 	}
+	if m.token_quota != nil {
+		fields = append(fields, apikey.FieldTokenQuota)
+	}
+	if m.token_quota_used != nil {
+		fields = append(fields, apikey.FieldTokenQuotaUsed)
+	}
 	return fields
 }
 
@@ -1656,6 +1778,10 @@ func (m *APIKeyMutation) Field(name string) (ent.Value, bool) {
 		return m.Window1dStart()
 	case apikey.FieldWindow7dStart:
 		return m.Window7dStart()
+	case apikey.FieldTokenQuota:
+		return m.TokenQuota()
+	case apikey.FieldTokenQuotaUsed:
+		return m.TokenQuotaUsed()
 	}
 	return nil, false
 }
@@ -1711,6 +1837,10 @@ func (m *APIKeyMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldWindow1dStart(ctx)
 	case apikey.FieldWindow7dStart:
 		return m.OldWindow7dStart(ctx)
+	case apikey.FieldTokenQuota:
+		return m.OldTokenQuota(ctx)
+	case apikey.FieldTokenQuotaUsed:
+		return m.OldTokenQuotaUsed(ctx)
 	}
 	return nil, fmt.Errorf("unknown APIKey field %s", name)
 }
@@ -1881,6 +2011,20 @@ func (m *APIKeyMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetWindow7dStart(v)
 		return nil
+	case apikey.FieldTokenQuota:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTokenQuota(v)
+		return nil
+	case apikey.FieldTokenQuotaUsed:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTokenQuotaUsed(v)
+		return nil
 	}
 	return fmt.Errorf("unknown APIKey field %s", name)
 }
@@ -1913,6 +2057,12 @@ func (m *APIKeyMutation) AddedFields() []string {
 	if m.addusage_7d != nil {
 		fields = append(fields, apikey.FieldUsage7d)
 	}
+	if m.addtoken_quota != nil {
+		fields = append(fields, apikey.FieldTokenQuota)
+	}
+	if m.addtoken_quota_used != nil {
+		fields = append(fields, apikey.FieldTokenQuotaUsed)
+	}
 	return fields
 }
 
@@ -1937,6 +2087,10 @@ func (m *APIKeyMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedUsage1d()
 	case apikey.FieldUsage7d:
 		return m.AddedUsage7d()
+	case apikey.FieldTokenQuota:
+		return m.AddedTokenQuota()
+	case apikey.FieldTokenQuotaUsed:
+		return m.AddedTokenQuotaUsed()
 	}
 	return nil, false
 }
@@ -2001,6 +2155,20 @@ func (m *APIKeyMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddUsage7d(v)
+		return nil
+	case apikey.FieldTokenQuota:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTokenQuota(v)
+		return nil
+	case apikey.FieldTokenQuotaUsed:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTokenQuotaUsed(v)
 		return nil
 	}
 	return fmt.Errorf("unknown APIKey numeric field %s", name)
@@ -2154,6 +2322,12 @@ func (m *APIKeyMutation) ResetField(name string) error {
 		return nil
 	case apikey.FieldWindow7dStart:
 		m.ResetWindow7dStart()
+		return nil
+	case apikey.FieldTokenQuota:
+		m.ResetTokenQuota()
+		return nil
+	case apikey.FieldTokenQuotaUsed:
+		m.ResetTokenQuotaUsed()
 		return nil
 	}
 	return fmt.Errorf("unknown APIKey field %s", name)

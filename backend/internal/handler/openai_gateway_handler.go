@@ -2141,7 +2141,7 @@ type openAIWSTurnAPIKeyLookup interface {
 //
 // 因此后续 turn 在 BeforeTurn（与 HTTP 请求进入认证中间件同位）经同一认证缓存
 // 重取快照，只采用其中的分组，作为该 turn 利润门准入与用量计费共同的分组；用户、
-// Key 限额、订阅仍沿用建连快照。只在同一把 Key、同一分组且平台与订阅类型未变时
+// 金额限额、订阅仍沿用建连快照，Token 限额随 turn 刷新并独立读取已用量。只在同一把 Key、同一分组且平台与订阅类型未变时
 // 采用：Key 换组或分组改平台/订阅类型不是调价，该连接按建连分组调度，继续按建连
 // 快照计费；重取失败同样保留建连快照，不断连。
 //
@@ -2187,7 +2187,7 @@ func (k *openAIWSTurnBillingAPIKeys) forTurn(turn int, conn *service.APIKey) *se
 	return conn
 }
 
-// refreshOpenAIWSTurnBillingAPIKey 返回本 turn 计费用的 API Key：分组取当前认证
+// refreshOpenAIWSTurnBillingAPIKey 返回本 turn 计费用的 API Key：分组和 Token 限额取当前认证
 // 快照，其余字段与建连快照共享。不满足采用条件时原样返回建连快照。
 func refreshOpenAIWSTurnBillingAPIKey(ctx context.Context, lookup openAIWSTurnAPIKeyLookup, conn *service.APIKey) *service.APIKey {
 	if lookup == nil || conn == nil || conn.Key == "" || conn.GroupID == nil || conn.Group == nil {
@@ -2205,6 +2205,8 @@ func refreshOpenAIWSTurnBillingAPIKey(ctx context.Context, lookup openAIWSTurnAP
 	}
 	turnKey := *conn
 	turnKey.Group = group
+	turnKey.TokenQuota = latest.TokenQuota
+	turnKey.TokenQuotaUsed = latest.TokenQuotaUsed
 	return &turnKey
 }
 
@@ -2681,12 +2683,25 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 	defer inflightDone()
 	ctx = inflightCtx
 
-	// A WebSocket may outlive a key's remaining spending window. Recheck
-	// after acquiring turn slots, including the first account-selection wait.
-	// Restrict this extra check to the opt-in mode so standard-mode RPM checks
-	// are not charged a second time for the same request.
-	checkSimpleModeTurnBilling := func() error {
-		if h.cfg == nil || h.cfg.RunMode != config.RunModeSimple || !h.cfg.SimpleModeKeyRateLimitEnabled {
+	// A WebSocket can outlive its token quota. Recheck limited keys on every
+	// turn, using the refreshed turn snapshot for newly enabled limits. Check only
+	// quotas here so standard-mode RPM is not charged twice for the same turn.
+	checkTurnBilling := func(turn int, keys *openAIWSTurnBillingAPIKeys, checkRateLimits bool) error {
+		if keys.forTurn(turn, apiKey).TokenQuota > 0 && h.apiKeyService != nil {
+			quota, used, err := h.apiKeyService.GetTokenQuota(ctx, apiKey.ID)
+			if err != nil {
+				return service.NewOpenAIWSClientCloseError(coderws.StatusInternalError, "failed to check token quota", err)
+			}
+			if quota > 0 && used >= quota {
+				return service.NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, "API key token quota exhausted", service.ErrAPIKeyTokenQuotaExhausted)
+			}
+			// Keep this turn's accounting in sync when a limit is enabled or
+			// removed on an already-open simple-mode connection.
+			turnKey := *keys.forTurn(turn, apiKey)
+			turnKey.TokenQuota, turnKey.TokenQuotaUsed = quota, used
+			keys.set(turn, &turnKey)
+		}
+		if !checkRateLimits || h.cfg == nil || h.cfg.RunMode != config.RunModeSimple || !h.cfg.SimpleModeKeyRateLimitEnabled {
 			return nil
 		}
 		if err := h.billingCacheService.CheckBillingEligibility(ctx, apiKey.User, apiKey, apiKey.Group, subscription, service.QuotaPlatform(ctx, apiKey)); err != nil {
@@ -2956,7 +2971,7 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 		// 已打开的连接生效。
 		var turnBillingAPIKeys openAIWSTurnBillingAPIKeys
 		// Passthrough ingress does not invoke BeforeTurn for the first frame.
-		if err := checkSimpleModeTurnBilling(); err != nil {
+		if err := checkTurnBilling(1, &turnBillingAPIKeys, true); err != nil {
 			closeOpenAIClientWS(wsConn, coderws.StatusPolicyViolation, "billing check failed")
 			return
 		}
@@ -3053,7 +3068,7 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 				}
 				turnPricing.freeze(turnAt)
 				if turn == 1 {
-					return nil
+					return checkTurnBilling(turn, &turnBillingAPIKeys, false)
 				}
 				// 防御式清理：避免异常路径下旧槽位覆盖导致泄漏。
 				releaseTurnSlots()
@@ -3080,7 +3095,7 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 				}
 				currentUserRelease = wrapReleaseOnDone(ctx, userReleaseFunc)
 				currentAccountRelease = wrapReleaseOnDone(ctx, accountReleaseFunc)
-				return checkSimpleModeTurnBilling()
+				return checkTurnBilling(turn, &turnBillingAPIKeys, true)
 			},
 			AfterTurn: func(turn int, result *service.OpenAIForwardResult, turnErr error) {
 				turnStart := getTurnStart(turn)
@@ -3161,7 +3176,11 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 				turnRecordPricingAt := turnPricing.currentOr(turnStart)
 				turnBillingAPIKey := turnBillingAPIKeys.forTurn(turn, apiKey)
 				cyberBlocked := service.GetOpsCyberPolicy(c) != nil
-				h.submitOpenAIUsageRecordTask(ctx, result, func(taskCtx context.Context) {
+				usageCtx := ctx
+				if turnBillingAPIKey.TokenQuota > 0 {
+					usageCtx = context.WithValue(ctx, ctxkey.APIKeyTokenQuotaEnabled, true)
+				}
+				h.submitOpenAIUsageRecordTask(usageCtx, result, func(taskCtx context.Context) {
 					if err := h.gatewayService.RecordUsage(taskCtx, &service.OpenAIRecordUsageInput{
 						Result:             result,
 						APIKey:             turnBillingAPIKey,
@@ -3432,6 +3451,10 @@ func getContextInt64(c *gin.Context, key string) (int64, bool) {
 }
 
 func (h *OpenAIGatewayHandler) submitUsageRecordTask(parent context.Context, task service.UsageRecordTask) {
+	if parent != nil && parent.Value(ctxkey.APIKeyTokenQuotaEnabled) == true {
+		h.submitMandatoryUsageRecordTask(parent, task)
+		return
+	}
 	if task == nil {
 		return
 	}

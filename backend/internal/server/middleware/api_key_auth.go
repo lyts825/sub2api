@@ -164,12 +164,29 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			return
 		}
 		ctx := context.WithValue(c.Request.Context(), ctxkey.UserID, apiKey.User.ID)
+		if apiKey.TokenQuota > 0 {
+			ctx = context.WithValue(ctx, ctxkey.APIKeyTokenQuotaEnabled, true)
+		}
 		c.Request = c.Request.WithContext(ctx)
 		billingInfoRequest := c.Request.URL.Path == "/v1/sub2api/billing"
 		// Async image task polling only reads data that already belongs to the
 		// authenticated key and must remain available after the completed
 		// generation consumes the key's remaining balance.
 		skipBilling := c.Request.URL.Path == "/v1/usage" || billingInfoRequest || isAsyncImageTaskRead(c.Request.Method, c.Request.URL.Path)
+		if !skipBilling {
+			if err := apiKeyService.CheckTokenQuota(c.Request.Context(), apiKey); err != nil {
+				if errors.Is(err, service.ErrAPIKeyTokenQuotaExhausted) {
+					if isOpenAICompatibleAPIKeyRequest(c) {
+						abortWithOpenAIQuotaError(c, http.StatusTooManyRequests, "API key token 用量已达上限")
+					} else {
+						AbortWithError(c, http.StatusTooManyRequests, "API_KEY_TOKEN_QUOTA_EXHAUSTED", "API key token 用量已达上限")
+					}
+				} else {
+					AbortWithError(c, http.StatusServiceUnavailable, "API_KEY_TOKEN_QUOTA_UNAVAILABLE", "Failed to check API key token quota")
+				}
+				return
+			}
+		}
 
 		// ── 4. SimpleMode → early return ─────────────────────────────
 

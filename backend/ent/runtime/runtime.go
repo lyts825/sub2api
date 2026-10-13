@@ -145,6 +145,18 @@ func init() {
 	apikeyDescUsage7d := apikeyFields[16].Descriptor()
 	// apikey.DefaultUsage7d holds the default value on creation for the usage_7d field.
 	apikey.DefaultUsage7d = apikeyDescUsage7d.Default.(float64)
+	// apikeyDescTokenQuota is the schema descriptor for token_quota field.
+	apikeyDescTokenQuota := apikeyFields[20].Descriptor()
+	// apikey.DefaultTokenQuota holds the default value on creation for the token_quota field.
+	apikey.DefaultTokenQuota = apikeyDescTokenQuota.Default.(int64)
+	// apikey.TokenQuotaValidator is a validator for the "token_quota" field. It is called by the builders before save.
+	apikey.TokenQuotaValidator = apikeyDescTokenQuota.Validators[0].(func(int64) error)
+	// apikeyDescTokenQuotaUsed is the schema descriptor for token_quota_used field.
+	apikeyDescTokenQuotaUsed := apikeyFields[21].Descriptor()
+	// apikey.DefaultTokenQuotaUsed holds the default value on creation for the token_quota_used field.
+	apikey.DefaultTokenQuotaUsed = apikeyDescTokenQuotaUsed.Default.(int64)
+	// apikey.TokenQuotaUsedValidator is a validator for the "token_quota_used" field. It is called by the builders before save.
+	apikey.TokenQuotaUsedValidator = apikeyDescTokenQuotaUsed.Validators[0].(func(int64) error)
 	accountMixin := schema.Account{}.Mixin()
 	accountMixinHooks1 := accountMixin[1].Hooks()
 	account.Hooks[0] = accountMixinHooks1[0]

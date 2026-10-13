@@ -247,6 +247,13 @@
                   />
                 </div>
               </div>
+              <div v-if="(row.token_quota ?? 0) > 0 || (row.token_quota_used ?? 0) > 0" class="mt-1.5">
+                <span class="text-gray-500 dark:text-gray-400">{{ t('keys.tokenQuota') }}:</span>
+                <span :class="isTokenQuotaExhausted(row) ? 'font-medium text-red-500' : 'font-medium text-gray-900 dark:text-white'">
+                  {{ (row.token_quota_used ?? 0).toLocaleString() }} / {{ (row.token_quota ?? 0) > 0 ? row.token_quota.toLocaleString() : t('keys.tokenQuotaUnlimited') }}
+                </span>
+                <span v-if="isTokenQuotaExhausted(row)" class="ml-1 text-red-500">{{ t('keys.tokenQuotaExhausted') }}</span>
+              </div>
             </div>
           </template>
 
@@ -734,6 +741,38 @@
           </div>
         </div>
 
+        <!-- Cumulative Token Limit Section -->
+        <div class="space-y-3">
+          <label for="token-quota" class="input-label">{{ t('keys.tokenQuotaLimit') }}</label>
+          <input
+            id="token-quota"
+            v-model.number="formData.token_quota"
+            type="number"
+            step="1"
+            min="0"
+            :max="Number.MAX_SAFE_INTEGER"
+            class="input"
+            :placeholder="t('keys.tokenQuotaPlaceholder')"
+          />
+          <p class="input-hint">{{ t('keys.tokenQuotaHint') }}</p>
+          <div v-if="showEditModal && selectedKey">
+            <label class="input-label">{{ t('keys.tokenQuotaUsed') }}</label>
+            <div class="flex items-center gap-2">
+              <div class="flex-1 rounded-lg bg-gray-100 px-3 py-2 font-medium text-gray-900 dark:bg-dark-700 dark:text-white">
+                {{ (selectedKey.token_quota_used ?? 0).toLocaleString() }}
+              </div>
+              <button
+                type="button"
+                class="btn btn-secondary text-sm"
+                :title="t('keys.resetTokenQuotaTitle')"
+                @click="showResetTokenQuotaDialog = true"
+              >
+                {{ t('keys.reset') }}
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Rate Limit Section -->
         <div class="space-y-3">
           <div class="flex items-center justify-between">
@@ -1055,6 +1094,18 @@
       :danger="true"
       @confirm="resetQuotaUsed"
       @cancel="showResetQuotaDialog = false"
+    />
+
+    <!-- Reset Token Quota Confirmation Dialog -->
+    <ConfirmDialog
+      :show="showResetTokenQuotaDialog"
+      :title="t('keys.resetTokenQuotaTitle')"
+      :message="t('keys.resetTokenQuotaConfirmMessage', { name: selectedKey?.name, used: (selectedKey?.token_quota_used ?? 0).toLocaleString() })"
+      :confirm-text="t('keys.reset')"
+      :cancel-text="t('common.cancel')"
+      :danger="true"
+      @confirm="resetTokenQuotaUsed"
+      @cancel="showResetTokenQuotaDialog = false"
     />
 
     <!-- Reset Rate Limit Confirmation Dialog -->
@@ -1400,6 +1451,7 @@ const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const showDeleteDialog = ref(false)
 const showResetQuotaDialog = ref(false)
+const showResetTokenQuotaDialog = ref(false)
 const showResetRateLimitDialog = ref(false)
 const showUseKeyModal = ref(false)
 const showCcsClientSelect = ref(false)
@@ -1441,6 +1493,7 @@ const formData = ref({
   // Quota settings (empty = unlimited)
   enable_quota: false,
   quota: null as number | null,
+  token_quota: null as number | null,
   // Rate limit settings
   enable_rate_limit: false,
   rate_limit_5h: null as number | null,
@@ -1478,6 +1531,9 @@ const shouldSubmitEditStatus = (key: ApiKey, status: 'active' | 'inactive') => {
   }
   return true
 }
+
+const isTokenQuotaExhausted = (key: ApiKey) =>
+  (key.token_quota ?? 0) > 0 && (key.token_quota_used ?? 0) >= (key.token_quota ?? 0)
 
 // Filter dropdown options
 const groupFilterOptions = computed(() => [
@@ -1708,6 +1764,7 @@ const editKey = (key: ApiKey) => {
     ip_blacklist: (key.ip_blacklist || []).join('\n'),
     enable_quota: key.quota > 0,
     quota: key.quota > 0 ? key.quota : null,
+    token_quota: key.token_quota || null,
     enable_rate_limit: (key.rate_limit_5h > 0) || (key.rate_limit_1d > 0) || (key.rate_limit_7d > 0),
     rate_limit_5h: key.rate_limit_5h || null,
     rate_limit_1d: key.rate_limit_1d || null,
@@ -1824,6 +1881,11 @@ const handleSubmit = async () => {
 
   // Calculate quota value (null/empty/0 = unlimited, stored as 0)
   const quota = formData.value.quota && formData.value.quota > 0 ? formData.value.quota : 0
+  const tokenQuota = Number(formData.value.token_quota ?? 0)
+  if (!Number.isSafeInteger(tokenQuota) || tokenQuota < 0) {
+    appStore.showError(t('keys.tokenQuotaInvalid'))
+    return
+  }
 
   // Calculate expiration
   let expiresInDays: number | undefined
@@ -1860,6 +1922,7 @@ const handleSubmit = async () => {
         ip_whitelist: ipWhitelist,
         ip_blacklist: ipBlacklist,
         quota: quota,
+        token_quota: tokenQuota,
         expires_at: expiresAt,
         rate_limit_5h: rateLimitData.rate_limit_5h,
         rate_limit_1d: rateLimitData.rate_limit_1d,
@@ -1880,7 +1943,8 @@ const handleSubmit = async () => {
         ipBlacklist,
         quota,
         expiresInDays,
-        rateLimitData
+        rateLimitData,
+        tokenQuota
       )
       appStore.showSuccess(t('keys.keyCreatedSuccess'))
       // Only advance tour if active, on submit step, and creation succeeded
@@ -1922,6 +1986,7 @@ const handleDelete = async () => {
 const closeModals = () => {
   showCreateModal.value = false
   showEditModal.value = false
+  showResetTokenQuotaDialog.value = false
   selectedKey.value = null
   formData.value = {
     name: '',
@@ -1934,6 +1999,7 @@ const closeModals = () => {
     ip_blacklist: '',
     enable_quota: false,
     quota: null,
+    token_quota: null,
     enable_rate_limit: false,
     rate_limit_5h: null,
     rate_limit_1d: null,
@@ -1974,6 +2040,21 @@ const resetQuotaUsed = async () => {
     }
   } catch (error: any) {
     const errorMsg = error.response?.data?.detail || t('keys.failedToResetQuota')
+    appStore.showError(errorMsg)
+  }
+}
+
+// Reset token usage independently, preserving unsaved form fields.
+const resetTokenQuotaUsed = async () => {
+  const key = selectedKey.value
+  if (!key) return
+  showResetTokenQuotaDialog.value = false
+  try {
+    const updatedKey = await keysAPI.update(key.id, { reset_token_quota: true })
+    key.token_quota_used = updatedKey.token_quota_used
+    appStore.showSuccess(t('keys.tokenQuotaResetSuccess'))
+  } catch (error: any) {
+    const errorMsg = error.response?.data?.detail || t('keys.failedToResetTokenQuota')
     appStore.showError(errorMsg)
   }
 }

@@ -115,6 +115,14 @@ func (APIKey) Fields() []ent.Field {
 			Optional().
 			Nillable().
 			Comment("Start time of the current 7d rate limit window"),
+		field.Int64("token_quota").
+			Default(0).
+			NonNegative().
+			Comment("Cumulative token limit (0 = unlimited)"),
+		field.Int64("token_quota_used").
+			Default(0).
+			NonNegative().
+			Comment("Tokens consumed since migration or last explicit reset"),
 	}
 }
 

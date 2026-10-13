@@ -755,6 +755,8 @@ export interface ApiKey {
   last_used_ip: string | null
   quota: number // Quota limit in USD (0 = unlimited)
   quota_used: number // Used quota amount in USD
+  token_quota?: number // Cumulative token limit (0 = unlimited)
+  token_quota_used?: number // Input, output, cache creation and cache read tokens
   expires_at: string | null // Expiration time (null = never expires)
   created_at: string
   updated_at: string
@@ -781,6 +783,7 @@ export interface CreateApiKeyRequest {
   ip_whitelist?: string[]
   ip_blacklist?: string[]
   quota?: number // Quota limit in USD (0 = unlimited)
+  token_quota?: number // Cumulative token limit (0 = unlimited)
   expires_in_days?: number // Days until expiry (null = never expires)
   rate_limit_5h?: number
   rate_limit_1d?: number
@@ -796,6 +799,8 @@ export interface UpdateApiKeyRequest {
   quota?: number // Quota limit in USD (null = no change, 0 = unlimited)
   expires_at?: string | null // Expiration time (null = no change)
   reset_quota?: boolean // Reset quota_used to 0
+  token_quota?: number // Cumulative token limit (0 = unlimited)
+  reset_token_quota?: boolean // Reset token_quota_used independently
   rate_limit_5h?: number
   rate_limit_1d?: number
   rate_limit_7d?: number

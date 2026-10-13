@@ -61,6 +61,10 @@ const (
 	FieldWindow1dStart = "window_1d_start"
 	// FieldWindow7dStart holds the string denoting the window_7d_start field in the database.
 	FieldWindow7dStart = "window_7d_start"
+	// FieldTokenQuota holds the string denoting the token_quota field in the database.
+	FieldTokenQuota = "token_quota"
+	// FieldTokenQuotaUsed holds the string denoting the token_quota_used field in the database.
+	FieldTokenQuotaUsed = "token_quota_used"
 	// EdgeUser holds the string denoting the user edge name in mutations.
 	EdgeUser = "user"
 	// EdgeGroup holds the string denoting the group edge name in mutations.
@@ -118,6 +122,8 @@ var Columns = []string{
 	FieldWindow5hStart,
 	FieldWindow1dStart,
 	FieldWindow7dStart,
+	FieldTokenQuota,
+	FieldTokenQuotaUsed,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -168,6 +174,14 @@ var (
 	DefaultUsage1d float64
 	// DefaultUsage7d holds the default value on creation for the "usage_7d" field.
 	DefaultUsage7d float64
+	// DefaultTokenQuota holds the default value on creation for the "token_quota" field.
+	DefaultTokenQuota int64
+	// TokenQuotaValidator is a validator for the "token_quota" field. It is called by the builders before save.
+	TokenQuotaValidator func(int64) error
+	// DefaultTokenQuotaUsed holds the default value on creation for the "token_quota_used" field.
+	DefaultTokenQuotaUsed int64
+	// TokenQuotaUsedValidator is a validator for the "token_quota_used" field. It is called by the builders before save.
+	TokenQuotaUsedValidator func(int64) error
 )
 
 // OrderOption defines the ordering options for the APIKey queries.
@@ -281,6 +295,16 @@ func ByWindow1dStart(opts ...sql.OrderTermOption) OrderOption {
 // ByWindow7dStart orders the results by the window_7d_start field.
 func ByWindow7dStart(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldWindow7dStart, opts...).ToFunc()
+}
+
+// ByTokenQuota orders the results by the token_quota field.
+func ByTokenQuota(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTokenQuota, opts...).ToFunc()
+}
+
+// ByTokenQuotaUsed orders the results by the token_quota_used field.
+func ByTokenQuotaUsed(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTokenQuotaUsed, opts...).ToFunc()
 }
 
 // ByUserField orders the results by user field.

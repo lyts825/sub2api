@@ -1,11 +1,13 @@
 package middleware
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/googleapi"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ip"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -128,6 +130,18 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subs
 			service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonAPIKeyGroupUnavailable)
 			MarkIngressRejected(c, IngressRejectGroupNotAllowed)
 			abortWithGoogleError(c, 403, "API Key 所属专属分组不再允许当前用户使用")
+			return
+		}
+
+		if apiKey.TokenQuota > 0 {
+			c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), ctxkey.APIKeyTokenQuotaEnabled, true))
+		}
+		if err := apiKeyService.CheckTokenQuota(c.Request.Context(), apiKey); err != nil {
+			if errors.Is(err, service.ErrAPIKeyTokenQuotaExhausted) {
+				abortWithGoogleError(c, 429, "API key token 用量已达上限")
+			} else {
+				abortWithGoogleError(c, 503, "Failed to check API key token quota")
+			}
 			return
 		}
 

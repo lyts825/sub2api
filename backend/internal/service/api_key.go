@@ -48,9 +48,11 @@ type APIKey struct {
 	CurrentConcurrency  int
 
 	// Quota fields
-	Quota     float64    // Quota limit in USD (0 = unlimited)
-	QuotaUsed float64    // Used quota amount
-	ExpiresAt *time.Time // Expiration time (nil = never expires)
+	Quota          float64    // Quota limit in USD (0 = unlimited)
+	QuotaUsed      float64    // Used quota amount
+	ExpiresAt      *time.Time // Expiration time (nil = never expires)
+	TokenQuota     int64      // Cumulative token limit (0 = unlimited)
+	TokenQuotaUsed int64      // Input + output + cache creation + cache read tokens
 
 	// Rate limit fields
 	RateLimit5h   float64    // Rate limit in USD per 5h (0 = unlimited)

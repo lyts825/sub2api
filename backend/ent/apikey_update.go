@@ -438,6 +438,48 @@ func (_u *APIKeyUpdate) ClearWindow7dStart() *APIKeyUpdate {
 	return _u
 }
 
+// SetTokenQuota sets the "token_quota" field.
+func (_u *APIKeyUpdate) SetTokenQuota(v int64) *APIKeyUpdate {
+	_u.mutation.ResetTokenQuota()
+	_u.mutation.SetTokenQuota(v)
+	return _u
+}
+
+// SetNillableTokenQuota sets the "token_quota" field if the given value is not nil.
+func (_u *APIKeyUpdate) SetNillableTokenQuota(v *int64) *APIKeyUpdate {
+	if v != nil {
+		_u.SetTokenQuota(*v)
+	}
+	return _u
+}
+
+// AddTokenQuota adds value to the "token_quota" field.
+func (_u *APIKeyUpdate) AddTokenQuota(v int64) *APIKeyUpdate {
+	_u.mutation.AddTokenQuota(v)
+	return _u
+}
+
+// SetTokenQuotaUsed sets the "token_quota_used" field.
+func (_u *APIKeyUpdate) SetTokenQuotaUsed(v int64) *APIKeyUpdate {
+	_u.mutation.ResetTokenQuotaUsed()
+	_u.mutation.SetTokenQuotaUsed(v)
+	return _u
+}
+
+// SetNillableTokenQuotaUsed sets the "token_quota_used" field if the given value is not nil.
+func (_u *APIKeyUpdate) SetNillableTokenQuotaUsed(v *int64) *APIKeyUpdate {
+	if v != nil {
+		_u.SetTokenQuotaUsed(*v)
+	}
+	return _u
+}
+
+// AddTokenQuotaUsed adds value to the "token_quota_used" field.
+func (_u *APIKeyUpdate) AddTokenQuotaUsed(v int64) *APIKeyUpdate {
+	_u.mutation.AddTokenQuotaUsed(v)
+	return _u
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (_u *APIKeyUpdate) SetUser(v *User) *APIKeyUpdate {
 	return _u.SetUserID(v.ID)
@@ -558,6 +600,16 @@ func (_u *APIKeyUpdate) check() error {
 	if v, ok := _u.mutation.Status(); ok {
 		if err := apikey.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "APIKey.status": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.TokenQuota(); ok {
+		if err := apikey.TokenQuotaValidator(v); err != nil {
+			return &ValidationError{Name: "token_quota", err: fmt.Errorf(`ent: validator failed for field "APIKey.token_quota": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.TokenQuotaUsed(); ok {
+		if err := apikey.TokenQuotaUsedValidator(v); err != nil {
+			return &ValidationError{Name: "token_quota_used", err: fmt.Errorf(`ent: validator failed for field "APIKey.token_quota_used": %w`, err)}
 		}
 	}
 	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
@@ -695,6 +747,18 @@ func (_u *APIKeyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.Window7dStartCleared() {
 		_spec.ClearField(apikey.FieldWindow7dStart, field.TypeTime)
+	}
+	if value, ok := _u.mutation.TokenQuota(); ok {
+		_spec.SetField(apikey.FieldTokenQuota, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedTokenQuota(); ok {
+		_spec.AddField(apikey.FieldTokenQuota, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.TokenQuotaUsed(); ok {
+		_spec.SetField(apikey.FieldTokenQuotaUsed, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedTokenQuotaUsed(); ok {
+		_spec.AddField(apikey.FieldTokenQuotaUsed, field.TypeInt64, value)
 	}
 	if _u.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -1225,6 +1289,48 @@ func (_u *APIKeyUpdateOne) ClearWindow7dStart() *APIKeyUpdateOne {
 	return _u
 }
 
+// SetTokenQuota sets the "token_quota" field.
+func (_u *APIKeyUpdateOne) SetTokenQuota(v int64) *APIKeyUpdateOne {
+	_u.mutation.ResetTokenQuota()
+	_u.mutation.SetTokenQuota(v)
+	return _u
+}
+
+// SetNillableTokenQuota sets the "token_quota" field if the given value is not nil.
+func (_u *APIKeyUpdateOne) SetNillableTokenQuota(v *int64) *APIKeyUpdateOne {
+	if v != nil {
+		_u.SetTokenQuota(*v)
+	}
+	return _u
+}
+
+// AddTokenQuota adds value to the "token_quota" field.
+func (_u *APIKeyUpdateOne) AddTokenQuota(v int64) *APIKeyUpdateOne {
+	_u.mutation.AddTokenQuota(v)
+	return _u
+}
+
+// SetTokenQuotaUsed sets the "token_quota_used" field.
+func (_u *APIKeyUpdateOne) SetTokenQuotaUsed(v int64) *APIKeyUpdateOne {
+	_u.mutation.ResetTokenQuotaUsed()
+	_u.mutation.SetTokenQuotaUsed(v)
+	return _u
+}
+
+// SetNillableTokenQuotaUsed sets the "token_quota_used" field if the given value is not nil.
+func (_u *APIKeyUpdateOne) SetNillableTokenQuotaUsed(v *int64) *APIKeyUpdateOne {
+	if v != nil {
+		_u.SetTokenQuotaUsed(*v)
+	}
+	return _u
+}
+
+// AddTokenQuotaUsed adds value to the "token_quota_used" field.
+func (_u *APIKeyUpdateOne) AddTokenQuotaUsed(v int64) *APIKeyUpdateOne {
+	_u.mutation.AddTokenQuotaUsed(v)
+	return _u
+}
+
 // SetUser sets the "user" edge to the User entity.
 func (_u *APIKeyUpdateOne) SetUser(v *User) *APIKeyUpdateOne {
 	return _u.SetUserID(v.ID)
@@ -1358,6 +1464,16 @@ func (_u *APIKeyUpdateOne) check() error {
 	if v, ok := _u.mutation.Status(); ok {
 		if err := apikey.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "APIKey.status": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.TokenQuota(); ok {
+		if err := apikey.TokenQuotaValidator(v); err != nil {
+			return &ValidationError{Name: "token_quota", err: fmt.Errorf(`ent: validator failed for field "APIKey.token_quota": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.TokenQuotaUsed(); ok {
+		if err := apikey.TokenQuotaUsedValidator(v); err != nil {
+			return &ValidationError{Name: "token_quota_used", err: fmt.Errorf(`ent: validator failed for field "APIKey.token_quota_used": %w`, err)}
 		}
 	}
 	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
@@ -1512,6 +1628,18 @@ func (_u *APIKeyUpdateOne) sqlSave(ctx context.Context) (_node *APIKey, err erro
 	}
 	if _u.mutation.Window7dStartCleared() {
 		_spec.ClearField(apikey.FieldWindow7dStart, field.TypeTime)
+	}
+	if value, ok := _u.mutation.TokenQuota(); ok {
+		_spec.SetField(apikey.FieldTokenQuota, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedTokenQuota(); ok {
+		_spec.AddField(apikey.FieldTokenQuota, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.TokenQuotaUsed(); ok {
+		_spec.SetField(apikey.FieldTokenQuotaUsed, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedTokenQuotaUsed(); ok {
+		_spec.AddField(apikey.FieldTokenQuotaUsed, field.TypeInt64, value)
 	}
 	if _u.mutation.UserCleared() {
 		edge := &sqlgraph.EdgeSpec{

@@ -160,6 +160,16 @@ func Window7dStart(v time.Time) predicate.APIKey {
 	return predicate.APIKey(sql.FieldEQ(FieldWindow7dStart, v))
 }
 
+// TokenQuota applies equality check predicate on the "token_quota" field. It's identical to TokenQuotaEQ.
+func TokenQuota(v int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldEQ(FieldTokenQuota, v))
+}
+
+// TokenQuotaUsed applies equality check predicate on the "token_quota_used" field. It's identical to TokenQuotaUsedEQ.
+func TokenQuotaUsed(v int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldEQ(FieldTokenQuotaUsed, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.APIKey {
 	return predicate.APIKey(sql.FieldEQ(FieldCreatedAt, v))
@@ -1123,6 +1133,86 @@ func Window7dStartIsNil() predicate.APIKey {
 // Window7dStartNotNil applies the NotNil predicate on the "window_7d_start" field.
 func Window7dStartNotNil() predicate.APIKey {
 	return predicate.APIKey(sql.FieldNotNull(FieldWindow7dStart))
+}
+
+// TokenQuotaEQ applies the EQ predicate on the "token_quota" field.
+func TokenQuotaEQ(v int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldEQ(FieldTokenQuota, v))
+}
+
+// TokenQuotaNEQ applies the NEQ predicate on the "token_quota" field.
+func TokenQuotaNEQ(v int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldNEQ(FieldTokenQuota, v))
+}
+
+// TokenQuotaIn applies the In predicate on the "token_quota" field.
+func TokenQuotaIn(vs ...int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldIn(FieldTokenQuota, vs...))
+}
+
+// TokenQuotaNotIn applies the NotIn predicate on the "token_quota" field.
+func TokenQuotaNotIn(vs ...int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldNotIn(FieldTokenQuota, vs...))
+}
+
+// TokenQuotaGT applies the GT predicate on the "token_quota" field.
+func TokenQuotaGT(v int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldGT(FieldTokenQuota, v))
+}
+
+// TokenQuotaGTE applies the GTE predicate on the "token_quota" field.
+func TokenQuotaGTE(v int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldGTE(FieldTokenQuota, v))
+}
+
+// TokenQuotaLT applies the LT predicate on the "token_quota" field.
+func TokenQuotaLT(v int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldLT(FieldTokenQuota, v))
+}
+
+// TokenQuotaLTE applies the LTE predicate on the "token_quota" field.
+func TokenQuotaLTE(v int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldLTE(FieldTokenQuota, v))
+}
+
+// TokenQuotaUsedEQ applies the EQ predicate on the "token_quota_used" field.
+func TokenQuotaUsedEQ(v int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldEQ(FieldTokenQuotaUsed, v))
+}
+
+// TokenQuotaUsedNEQ applies the NEQ predicate on the "token_quota_used" field.
+func TokenQuotaUsedNEQ(v int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldNEQ(FieldTokenQuotaUsed, v))
+}
+
+// TokenQuotaUsedIn applies the In predicate on the "token_quota_used" field.
+func TokenQuotaUsedIn(vs ...int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldIn(FieldTokenQuotaUsed, vs...))
+}
+
+// TokenQuotaUsedNotIn applies the NotIn predicate on the "token_quota_used" field.
+func TokenQuotaUsedNotIn(vs ...int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldNotIn(FieldTokenQuotaUsed, vs...))
+}
+
+// TokenQuotaUsedGT applies the GT predicate on the "token_quota_used" field.
+func TokenQuotaUsedGT(v int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldGT(FieldTokenQuotaUsed, v))
+}
+
+// TokenQuotaUsedGTE applies the GTE predicate on the "token_quota_used" field.
+func TokenQuotaUsedGTE(v int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldGTE(FieldTokenQuotaUsed, v))
+}
+
+// TokenQuotaUsedLT applies the LT predicate on the "token_quota_used" field.
+func TokenQuotaUsedLT(v int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldLT(FieldTokenQuotaUsed, v))
+}
+
+// TokenQuotaUsedLTE applies the LTE predicate on the "token_quota_used" field.
+func TokenQuotaUsedLTE(v int64) predicate.APIKey {
+	return predicate.APIKey(sql.FieldLTE(FieldTokenQuotaUsed, v))
 }
 
 // HasUser applies the HasEdge predicate on the "user" edge.

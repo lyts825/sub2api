@@ -66,6 +66,10 @@ type APIKey struct {
 	Window1dStart *time.Time `json:"window_1d_start,omitempty"`
 	// Start time of the current 7d rate limit window
 	Window7dStart *time.Time `json:"window_7d_start,omitempty"`
+	// Cumulative token limit (0 = unlimited)
+	TokenQuota int64 `json:"token_quota,omitempty"`
+	// Tokens consumed since migration or last explicit reset
+	TokenQuotaUsed int64 `json:"token_quota_used,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the APIKeyQuery when eager-loading is set.
 	Edges        APIKeyEdges `json:"edges"`
@@ -125,7 +129,7 @@ func (*APIKey) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case apikey.FieldQuota, apikey.FieldQuotaUsed, apikey.FieldRateLimit5h, apikey.FieldRateLimit1d, apikey.FieldRateLimit7d, apikey.FieldUsage5h, apikey.FieldUsage1d, apikey.FieldUsage7d:
 			values[i] = new(sql.NullFloat64)
-		case apikey.FieldID, apikey.FieldUserID, apikey.FieldGroupID:
+		case apikey.FieldID, apikey.FieldUserID, apikey.FieldGroupID, apikey.FieldTokenQuota, apikey.FieldTokenQuotaUsed:
 			values[i] = new(sql.NullInt64)
 		case apikey.FieldKey, apikey.FieldName, apikey.FieldStatus:
 			values[i] = new(sql.NullString)
@@ -301,6 +305,18 @@ func (_m *APIKey) assignValues(columns []string, values []any) error {
 				_m.Window7dStart = new(time.Time)
 				*_m.Window7dStart = value.Time
 			}
+		case apikey.FieldTokenQuota:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field token_quota", values[i])
+			} else if value.Valid {
+				_m.TokenQuota = value.Int64
+			}
+		case apikey.FieldTokenQuotaUsed:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field token_quota_used", values[i])
+			} else if value.Valid {
+				_m.TokenQuotaUsed = value.Int64
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -434,6 +450,12 @@ func (_m *APIKey) String() string {
 		builder.WriteString("window_7d_start=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
+	builder.WriteString(", ")
+	builder.WriteString("token_quota=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TokenQuota))
+	builder.WriteString(", ")
+	builder.WriteString("token_quota_used=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TokenQuotaUsed))
 	builder.WriteByte(')')
 	return builder.String()
 }

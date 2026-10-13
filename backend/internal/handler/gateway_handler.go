@@ -1621,8 +1621,21 @@ func (h *GatewayHandler) Usage(c *gin.Context) {
 		}
 	}
 
+	// Token usage changes after every request; the authentication snapshot is not
+	// authoritative for this counter, including when an exhausted key reads usage.
+	if apiKey.TokenQuota > 0 && h.apiKeyService != nil {
+		quota, used, err := h.apiKeyService.GetTokenQuota(ctx, apiKey.ID)
+		if err != nil {
+			h.errorResponse(c, http.StatusServiceUnavailable, "api_error", "Failed to read API key token quota")
+			return
+		}
+		key := *apiKey
+		key.TokenQuota, key.TokenQuotaUsed = quota, used
+		apiKey = &key
+	}
+
 	// 判断模式: key 有总额度或速率限制 → quota_limited，否则 → unrestricted
-	isQuotaLimited := apiKey.Quota > 0 || apiKey.HasRateLimits()
+	isQuotaLimited := apiKey.Quota > 0 || apiKey.TokenQuota > 0 || apiKey.HasRateLimits()
 
 	if isQuotaLimited {
 		h.usageQuotaLimited(c, ctx, apiKey, usageData, dailyUsage, modelStats)
@@ -1708,6 +1721,19 @@ func (h *GatewayHandler) usageQuotaLimited(c *gin.Context, ctx context.Context, 
 	}
 
 	// 总额度信息
+	if apiKey.TokenQuota > 0 {
+		remaining := max(int64(0), apiKey.TokenQuota-apiKey.TokenQuotaUsed)
+		resp["token_quota"] = gin.H{
+			"limit":     apiKey.TokenQuota,
+			"used":      apiKey.TokenQuotaUsed,
+			"remaining": remaining,
+			"exhausted": apiKey.TokenQuotaUsed >= apiKey.TokenQuota,
+			"unit":      "tokens",
+		}
+		resp["remaining"] = remaining
+		resp["unit"] = "tokens"
+	}
+
 	if apiKey.Quota > 0 {
 		remaining := apiKey.GetQuotaRemaining()
 		resp["quota"] = gin.H{
@@ -2498,6 +2524,9 @@ func billingErrorDetails(err error) (status int, code, message string, retryAfte
 		}
 		return http.StatusServiceUnavailable, "billing_service_error", msg, 0
 	}
+	if errors.Is(err, service.ErrAPIKeyTokenQuotaExhausted) {
+		return http.StatusTooManyRequests, "API_KEY_TOKEN_QUOTA_EXHAUSTED", pkgerrors.Message(err), 0
+	}
 	if errors.Is(err, service.ErrAPIKeyRateLimit5hExceeded) {
 		msg := pkgerrors.Message(err)
 		return http.StatusTooManyRequests, "rate_limit_exceeded", msg, 0
@@ -2561,6 +2590,10 @@ func (h *GatewayHandler) maybeLogCompatibilityFallbackMetrics(reqLog *zap.Logger
 }
 
 func (h *GatewayHandler) submitUsageRecordTask(parent context.Context, task service.UsageRecordTask) {
+	if parent != nil && parent.Value(ctxkey.APIKeyTokenQuotaEnabled) == true {
+		h.submitMandatoryUsageRecordTask(parent, task)
+		return
+	}
 	if task == nil {
 		return
 	}

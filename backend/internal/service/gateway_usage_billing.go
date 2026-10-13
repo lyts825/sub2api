@@ -84,12 +84,16 @@ type postUsageBillingParams struct {
 	APIKeyService         APIKeyQuotaUpdater
 	Platform              string // 来自 APIKey 关联 Group 的平台标识
 	// SimpleModeKeyRateLimitOnly opts the request into the simple-mode billing
-	// path that records only API-key 5h/1d/7d window usage. It must not trigger
-	// balance, subscription, account, platform, or lifetime-key-quota effects.
+	// path that records API-key window and token usage. It must not trigger
+	// balance, subscription, account, platform, or lifetime monetary quota effects.
 	SimpleModeKeyRateLimitOnly bool
+	// SimpleModeTokenUsageOnly preserves token accounting without charging any
+	// monetary quotas when simple-mode key windows have not been enabled.
+	SimpleModeTokenUsageOnly bool
 }
 
 var ErrSimpleModeKeyRateLimitBillingUnavailable = errors.New("simple mode api key rate-limit billing unavailable")
+var ErrAPIKeyTokenQuotaBillingUnavailable = errors.New("api key token quota billing unavailable")
 
 func simpleModeKeyRateLimitBillingEnabled(cfg *config.Config, apiKey *APIKey) bool {
 	return cfg != nil && cfg.RunMode == config.RunModeSimple && cfg.SimpleModeKeyRateLimitEnabled && apiKey != nil && apiKey.HasRateLimits()
@@ -318,8 +322,8 @@ func buildUsageBillingCommand(requestID string, usageLog *UsageLog, p *postUsage
 		}
 	}
 
-	if p.SimpleModeKeyRateLimitOnly {
-		if p.Cost.ActualCost > 0 && p.APIKey.HasRateLimits() {
+	if p.SimpleModeKeyRateLimitOnly || p.SimpleModeTokenUsageOnly {
+		if p.SimpleModeKeyRateLimitOnly && p.Cost.ActualCost > 0 && p.APIKey.HasRateLimits() {
 			cmd.APIKeyRateLimitCost = p.Cost.ActualCost
 		}
 		cmd.Normalize()
@@ -361,6 +365,9 @@ func applyUsageBilling(ctx context.Context, requestID string, usageLog *UsageLog
 		if p.SimpleModeKeyRateLimitOnly {
 			return false, ErrSimpleModeKeyRateLimitBillingUnavailable
 		}
+		if p.SimpleModeTokenUsageOnly || p.APIKey != nil && p.APIKey.TokenQuota > 0 {
+			return false, ErrAPIKeyTokenQuotaBillingUnavailable
+		}
 		// The legacy path is only a fallback for standard billing. Simple mode
 		// must retain request-id deduplication and never bill other balances.
 		postUsageBilling(ctx, p, deps)
@@ -395,12 +402,12 @@ func finalizePostUsageBilling(ctx context.Context, p *postUsageBillingParams, de
 		return
 	}
 
-	if p.SimpleModeKeyRateLimitOnly {
+	if p.SimpleModeKeyRateLimitOnly || p.SimpleModeTokenUsageOnly {
 		// Simple-mode key windows are DB-authoritative during preflight. Clear
 		// any Redis snapshot after the committed increment as a best-effort aid
 		// when switching back to standard mode. Enforcement here never relies on
 		// successful cache invalidation.
-		if p.APIKey != nil && deps.billingCacheService != nil {
+		if p.SimpleModeKeyRateLimitOnly && p.APIKey != nil && deps.billingCacheService != nil {
 			if err := deps.billingCacheService.InvalidateAPIKeyRateLimit(ctx, p.APIKey.ID); err != nil {
 				logger.LegacyPrintf("service.gateway", "Warning: invalidate simple-mode api key rate-limit cache failed for key %d: %v", p.APIKey.ID, err)
 			}
@@ -855,7 +862,8 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 	}
 
 	simpleModeKeyRateLimitOnly := simpleModeKeyRateLimitBillingEnabled(s.cfg, apiKey)
-	if s.cfg != nil && s.cfg.RunMode == config.RunModeSimple && !simpleModeKeyRateLimitOnly {
+	simpleModeTokenUsageOnly := s.cfg != nil && s.cfg.RunMode == config.RunModeSimple && !simpleModeKeyRateLimitOnly && apiKey.TokenQuota > 0 && usageLog.TotalTokens() > 0
+	if s.cfg != nil && s.cfg.RunMode == config.RunModeSimple && !simpleModeKeyRateLimitOnly && !simpleModeTokenUsageOnly {
 		writeUsageLogBestEffort(ctx, s.usageLogRepo, usageLog, "service.gateway")
 		logger.LegacyPrintf("service.gateway", "[SIMPLE MODE] Usage recorded (not billed): user=%d, tokens=%d", usageLog.UserID, usageLog.TotalTokens())
 		s.deferredService.ScheduleLastUsedUpdate(account.ID)
@@ -885,6 +893,7 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 		APIKeyService:              input.APIKeyService,
 		Platform:                   quotaPlatform,
 		SimpleModeKeyRateLimitOnly: simpleModeKeyRateLimitOnly,
+		SimpleModeTokenUsageOnly:   simpleModeTokenUsageOnly,
 	}, s.billingDeps(), s.usageBillingRepo)
 
 	if billingErr != nil {
