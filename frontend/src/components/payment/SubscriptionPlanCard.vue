@@ -150,7 +150,7 @@ const discountText = computed(() => {
 })
 
 const rateDisplay = computed(() => {
-  const rate = props.plan.rate_multiplier ?? 1
+  const rate = props.plan.display_rate_multiplier ?? props.plan.rate_multiplier ?? 1
   return `×${Number(rate.toPrecision(10))}`
 })
 

@@ -233,6 +233,7 @@ type AdminBoundAuthIdentityChannel struct {
 }
 
 type CreateGroupInput struct {
+	DisplayRateMultiplier     *float64 // nil follows the actual multiplier for display.
 	Name                      string
 	Description               string
 	I18n                      GroupI18n // 名称与描述的界面语言译文
@@ -314,6 +315,8 @@ type CreateGroupInput struct {
 }
 
 type UpdateGroupInput struct {
+	DisplayRateMultiplier     *float64
+	SetDisplayRateMultiplier  bool // false leaves unchanged; true with nil clears.
 	Name                      string
 	Description               *string
 	I18n                      *GroupI18n // nil 表示不修改；非 nil 整体替换

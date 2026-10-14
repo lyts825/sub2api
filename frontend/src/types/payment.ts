@@ -128,6 +128,7 @@ export interface SubscriptionPlan {
   group_platform?: string
   group_name?: string
   rate_multiplier?: number
+  display_rate_multiplier?: number | null
   peak_rate_enabled?: boolean
   peak_start?: string
   peak_end?: string

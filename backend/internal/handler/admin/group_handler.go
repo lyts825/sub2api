@@ -136,11 +136,12 @@ func (h *GroupHandler) rejectUnsupportedSimpleModeOperation(c *gin.Context, oper
 }
 
 type simpleModeGroupResponse struct {
-	ID          int64  `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Platform    string `json:"platform"`
-	Status      string `json:"status"`
+	DisplayRateMultiplier *float64 `json:"display_rate_multiplier,omitempty"`
+	ID                    int64    `json:"id"`
+	Name                  string   `json:"name"`
+	Description           string   `json:"description"`
+	Platform              string   `json:"platform"`
+	Status                string   `json:"status"`
 
 	I18n service.GroupI18n `json:"i18n,omitempty"`
 
@@ -157,7 +158,8 @@ func groupForSimpleMode(group *service.Group) *simpleModeGroupResponse {
 		return nil
 	}
 	return &simpleModeGroupResponse{
-		ID: group.ID, Name: group.Name, Description: group.Description, Platform: group.Platform,
+		DisplayRateMultiplier: group.DisplayRateMultiplier,
+		ID:                    group.ID, Name: group.Name, Description: group.Description, Platform: group.Platform,
 		Status:             group.Status,
 		I18n:               group.I18n,
 		AccountCount:       group.AccountCount,
@@ -170,7 +172,7 @@ func sanitizeCreateGroupRequestForSimpleMode(req *CreateGroupRequest) {
 	if req == nil {
 		return
 	}
-	allowed := CreateGroupRequest{Name: req.Name, Description: req.Description, I18n: req.I18n, Platform: req.Platform}
+	allowed := CreateGroupRequest{Name: req.Name, Description: req.Description, I18n: req.I18n, Platform: req.Platform, DisplayRateMultiplier: req.DisplayRateMultiplier}
 	allowed.RateMultiplier = 1
 	allowed.SubscriptionType = service.SubscriptionTypeStandard
 	*req = allowed
@@ -180,11 +182,12 @@ func sanitizeUpdateGroupRequestForSimpleMode(req *UpdateGroupRequest) {
 	if req == nil {
 		return
 	}
-	*req = UpdateGroupRequest{Name: req.Name, Description: req.Description, I18n: req.I18n}
+	*req = UpdateGroupRequest{Name: req.Name, Description: req.Description, I18n: req.I18n, DisplayRateMultiplier: req.DisplayRateMultiplier}
 }
 
 // CreateGroupRequest represents create group request
 type CreateGroupRequest struct {
+	DisplayRateMultiplier     *float64                      `json:"display_rate_multiplier"`
 	Name                      string                        `json:"name" binding:"required"`
 	Description               string                        `json:"description"`
 	I18n                      service.GroupI18n             `json:"i18n"` // 名称与描述的界面语言译文
@@ -260,6 +263,7 @@ type CreateGroupRequest struct {
 
 // UpdateGroupRequest represents update group request
 type UpdateGroupRequest struct {
+	DisplayRateMultiplier     optionalLimitField             `json:"display_rate_multiplier"`
 	Name                      string                         `json:"name"`
 	Description               *string                        `json:"description"`
 	I18n                      *service.GroupI18n             `json:"i18n"` // 缺省不修改，传入则整体替换
@@ -672,6 +676,7 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		I18n:                            req.I18n,
 		Platform:                        req.Platform,
 		RateMultiplier:                  req.RateMultiplier,
+		DisplayRateMultiplier:           req.DisplayRateMultiplier,
 		IsExclusive:                     req.IsExclusive,
 		SubscriptionType:                req.SubscriptionType,
 		DailyLimitUSD:                   req.DailyLimitUSD.ToServiceInput(),
@@ -813,6 +818,8 @@ func (h *GroupHandler) Update(c *gin.Context) {
 	}
 
 	group, err := h.adminService.UpdateGroup(c.Request.Context(), groupID, &service.UpdateGroupInput{
+		DisplayRateMultiplier:           req.DisplayRateMultiplier.value,
+		SetDisplayRateMultiplier:        req.DisplayRateMultiplier.set,
 		Name:                            req.Name,
 		Description:                     req.Description,
 		I18n:                            req.I18n,

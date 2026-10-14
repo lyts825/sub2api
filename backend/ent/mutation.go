@@ -22352,6 +22352,8 @@ type GroupMutation struct {
 	addprofit_min_margin                    *float64
 	profit_safety_buffer                    *float64
 	addprofit_safety_buffer                 *float64
+	display_rate_multiplier                 *float64
+	adddisplay_rate_multiplier              *float64
 	clearedFields                           map[string]struct{}
 	api_keys                                map[int64]struct{}
 	removedapi_keys                         map[int64]struct{}
@@ -25774,6 +25776,76 @@ func (m *GroupMutation) ResetProfitSafetyBuffer() {
 	m.addprofit_safety_buffer = nil
 }
 
+// SetDisplayRateMultiplier sets the "display_rate_multiplier" field.
+func (m *GroupMutation) SetDisplayRateMultiplier(f float64) {
+	m.display_rate_multiplier = &f
+	m.adddisplay_rate_multiplier = nil
+}
+
+// DisplayRateMultiplier returns the value of the "display_rate_multiplier" field in the mutation.
+func (m *GroupMutation) DisplayRateMultiplier() (r float64, exists bool) {
+	v := m.display_rate_multiplier
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDisplayRateMultiplier returns the old "display_rate_multiplier" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldDisplayRateMultiplier(ctx context.Context) (v *float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDisplayRateMultiplier is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDisplayRateMultiplier requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDisplayRateMultiplier: %w", err)
+	}
+	return oldValue.DisplayRateMultiplier, nil
+}
+
+// AddDisplayRateMultiplier adds f to the "display_rate_multiplier" field.
+func (m *GroupMutation) AddDisplayRateMultiplier(f float64) {
+	if m.adddisplay_rate_multiplier != nil {
+		*m.adddisplay_rate_multiplier += f
+	} else {
+		m.adddisplay_rate_multiplier = &f
+	}
+}
+
+// AddedDisplayRateMultiplier returns the value that was added to the "display_rate_multiplier" field in this mutation.
+func (m *GroupMutation) AddedDisplayRateMultiplier() (r float64, exists bool) {
+	v := m.adddisplay_rate_multiplier
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearDisplayRateMultiplier clears the value of the "display_rate_multiplier" field.
+func (m *GroupMutation) ClearDisplayRateMultiplier() {
+	m.display_rate_multiplier = nil
+	m.adddisplay_rate_multiplier = nil
+	m.clearedFields[group.FieldDisplayRateMultiplier] = struct{}{}
+}
+
+// DisplayRateMultiplierCleared returns if the "display_rate_multiplier" field was cleared in this mutation.
+func (m *GroupMutation) DisplayRateMultiplierCleared() bool {
+	_, ok := m.clearedFields[group.FieldDisplayRateMultiplier]
+	return ok
+}
+
+// ResetDisplayRateMultiplier resets all changes to the "display_rate_multiplier" field.
+func (m *GroupMutation) ResetDisplayRateMultiplier() {
+	m.display_rate_multiplier = nil
+	m.adddisplay_rate_multiplier = nil
+	delete(m.clearedFields, group.FieldDisplayRateMultiplier)
+}
+
 // AddAPIKeyIDs adds the "api_keys" edge to the APIKey entity by ids.
 func (m *GroupMutation) AddAPIKeyIDs(ids ...int64) {
 	if m.api_keys == nil {
@@ -26132,7 +26204,7 @@ func (m *GroupMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *GroupMutation) Fields() []string {
-	fields := make([]string, 0, 67)
+	fields := make([]string, 0, 68)
 	if m.created_at != nil {
 		fields = append(fields, group.FieldCreatedAt)
 	}
@@ -26334,6 +26406,9 @@ func (m *GroupMutation) Fields() []string {
 	if m.profit_safety_buffer != nil {
 		fields = append(fields, group.FieldProfitSafetyBuffer)
 	}
+	if m.display_rate_multiplier != nil {
+		fields = append(fields, group.FieldDisplayRateMultiplier)
+	}
 	return fields
 }
 
@@ -26476,6 +26551,8 @@ func (m *GroupMutation) Field(name string) (ent.Value, bool) {
 		return m.ProfitMinMargin()
 	case group.FieldProfitSafetyBuffer:
 		return m.ProfitSafetyBuffer()
+	case group.FieldDisplayRateMultiplier:
+		return m.DisplayRateMultiplier()
 	}
 	return nil, false
 }
@@ -26619,6 +26696,8 @@ func (m *GroupMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldProfitMinMargin(ctx)
 	case group.FieldProfitSafetyBuffer:
 		return m.OldProfitSafetyBuffer(ctx)
+	case group.FieldDisplayRateMultiplier:
+		return m.OldDisplayRateMultiplier(ctx)
 	}
 	return nil, fmt.Errorf("unknown Group field %s", name)
 }
@@ -27097,6 +27176,13 @@ func (m *GroupMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetProfitSafetyBuffer(v)
 		return nil
+	case group.FieldDisplayRateMultiplier:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDisplayRateMultiplier(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Group field %s", name)
 }
@@ -27186,6 +27272,9 @@ func (m *GroupMutation) AddedFields() []string {
 	if m.addprofit_safety_buffer != nil {
 		fields = append(fields, group.FieldProfitSafetyBuffer)
 	}
+	if m.adddisplay_rate_multiplier != nil {
+		fields = append(fields, group.FieldDisplayRateMultiplier)
+	}
 	return fields
 }
 
@@ -27248,6 +27337,8 @@ func (m *GroupMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedProfitMinMargin()
 	case group.FieldProfitSafetyBuffer:
 		return m.AddedProfitSafetyBuffer()
+	case group.FieldDisplayRateMultiplier:
+		return m.AddedDisplayRateMultiplier()
 	}
 	return nil, false
 }
@@ -27446,6 +27537,13 @@ func (m *GroupMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddProfitSafetyBuffer(v)
 		return nil
+	case group.FieldDisplayRateMultiplier:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddDisplayRateMultiplier(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Group numeric field %s", name)
 }
@@ -27519,6 +27617,9 @@ func (m *GroupMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(group.FieldModelRouting) {
 		fields = append(fields, group.FieldModelRouting)
+	}
+	if m.FieldCleared(group.FieldDisplayRateMultiplier) {
+		fields = append(fields, group.FieldDisplayRateMultiplier)
 	}
 	return fields
 }
@@ -27599,6 +27700,9 @@ func (m *GroupMutation) ClearField(name string) error {
 		return nil
 	case group.FieldModelRouting:
 		m.ClearModelRouting()
+		return nil
+	case group.FieldDisplayRateMultiplier:
+		m.ClearDisplayRateMultiplier()
 		return nil
 	}
 	return fmt.Errorf("unknown Group nullable field %s", name)
@@ -27808,6 +27912,9 @@ func (m *GroupMutation) ResetField(name string) error {
 		return nil
 	case group.FieldProfitSafetyBuffer:
 		m.ResetProfitSafetyBuffer()
+		return nil
+	case group.FieldDisplayRateMultiplier:
+		m.ResetDisplayRateMultiplier()
 		return nil
 	}
 	return fmt.Errorf("unknown Group field %s", name)

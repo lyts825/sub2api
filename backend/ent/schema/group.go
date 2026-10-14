@@ -308,6 +308,12 @@ func (Group) Fields() []ent.Field {
 			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}).
 			Default(0).
 			Comment("安全缓冲，小数；与 margin 相加后从下游倍率中扣除，默认 0"),
+		field.Float("display_rate_multiplier").
+			Optional().
+			Nillable().
+			Range(0, 999999.9999).
+			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}).
+			Comment("独立展示倍率；NULL 沿用实际倍率，不参与计费"),
 	}
 }
 

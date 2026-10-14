@@ -26,13 +26,13 @@
     <div class="flex shrink-0 items-center gap-2 pt-0.5">
       <div class="flex shrink-0 flex-col items-end gap-1">
         <!-- Rate pill (platform color) -->
-        <span v-if="rateMultiplier !== undefined" :class="['inline-flex items-center whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold', ratePillClass]">
+        <span v-if="displayRateMultiplier != null || rateMultiplier !== undefined" :class="['inline-flex items-center whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold', ratePillClass]">
           <template v-if="hasCustomRate">
             <span class="mr-1 line-through opacity-50">{{ rateMultiplier }}x</span>
             <span class="font-bold">{{ userRateMultiplier }}x</span>
           </template>
           <template v-else>
-            {{ rateMultiplier }}x {{ t('admin.groups.rateLabel') }}
+            {{ displayRateMultiplier ?? rateMultiplier }}x {{ t('admin.groups.rateLabel') }}
           </template>
         </span>
         <span
@@ -73,6 +73,7 @@ interface Props {
   platform: GroupPlatform
   subscriptionType?: SubscriptionType
   rateMultiplier?: number
+  displayRateMultiplier?: number | null
   userRateMultiplier?: number | null
   peakRateEnabled?: boolean
   peakStart?: string
@@ -94,6 +95,7 @@ const props = withDefaults(defineProps<Props>(), {
 // Whether user has a custom rate different from default
 const hasCustomRate = computed(() => {
   return (
+    props.displayRateMultiplier == null &&
     props.userRateMultiplier !== null &&
     props.userRateMultiplier !== undefined &&
     props.rateMultiplier !== undefined &&

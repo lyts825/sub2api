@@ -261,10 +261,13 @@
             </div>
           </template>
 
-          <template #cell-rate_multiplier="{ value }">
+          <template #cell-rate_multiplier="{ value, row }">
             <span class="text-sm text-gray-700 dark:text-gray-300"
               >{{ value }}x</span
             >
+            <div v-if="row.display_rate_multiplier != null" class="text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.groups.displayRateMultiplier') }}: {{ row.display_rate_multiplier }}x
+            </div>
           </template>
 
           <template #cell-is_exclusive="{ value }">
@@ -520,6 +523,11 @@
             @change="createForm.copy_accounts_from_group_ids = []"
           />
           <p class="input-hint">{{ t("admin.groups.platformHint") }}</p>
+        </div>
+        <div>
+          <label class="input-label" for="create-group-display-rate">{{ t('admin.groups.displayRateMultiplier') }}</label>
+          <input id="create-group-display-rate" v-model.number="createForm.display_rate_multiplier" type="number" min="0" max="999999.9999" step="0.0001" class="input" :placeholder="t('admin.groups.displayRateMultiplierPlaceholder')" />
+          <p class="input-hint">{{ t('admin.groups.displayRateMultiplierHint') }}</p>
         </div>
         <!-- 从分组复制账号 -->
         <div v-if="!authStore.isSimpleMode && copyAccountsGroupOptions.length > 0">
@@ -2157,6 +2165,11 @@
             data-tour="group-form-platform"
           />
           <p class="input-hint">{{ t("admin.groups.platformNotEditable") }}</p>
+        </div>
+        <div>
+          <label class="input-label" for="edit-group-display-rate">{{ t('admin.groups.displayRateMultiplier') }}</label>
+          <input id="edit-group-display-rate" v-model.number="editForm.display_rate_multiplier" type="number" min="0" max="999999.9999" step="0.0001" class="input" :placeholder="t('admin.groups.displayRateMultiplierPlaceholder')" />
+          <p class="input-hint">{{ t('admin.groups.displayRateMultiplierHint') }}</p>
         </div>
         <template v-if="!authStore.isSimpleMode">
         <!-- 从分组复制账号（编辑时） -->
@@ -4946,6 +4959,7 @@ const createForm = reactive({
   i18n: {} as GroupI18n,
   platform: "anthropic" as GroupPlatform,
   rate_multiplier: 1.0,
+  display_rate_multiplier: null as number | '' | null,
   is_exclusive: false,
   subscription_type: "standard" as SubscriptionType,
   daily_limit_usd: null as number | null,
@@ -5311,6 +5325,7 @@ const editForm = reactive({
   i18n: {} as GroupI18n,
   platform: "anthropic" as GroupPlatform,
   rate_multiplier: 1.0,
+  display_rate_multiplier: null as number | '' | null,
   is_exclusive: false,
   status: "active" as "active" | "inactive",
   subscription_type: "standard" as SubscriptionType,
@@ -5775,6 +5790,7 @@ const closeCreateModal = () => {
   createForm.i18n = {};
   createForm.platform = "anthropic";
   createForm.rate_multiplier = 1.0;
+  createForm.display_rate_multiplier = null;
   createForm.is_exclusive = false;
   createForm.subscription_type = "standard";
   createForm.daily_limit_usd = null;
@@ -5883,7 +5899,15 @@ const validateGroupReasoningMultipliers = (pricing: PricingFormEntry[]): boolean
   return true;
 };
 
+const validateDisplayRateMultiplier = (value: number | '' | null): boolean => {
+  if (value === '' || value === null) return true;
+  if (Number.isFinite(value) && value >= 0 && value <= 999999.9999) return true;
+  appStore.showError(t('admin.groups.displayRateMultiplierInvalid'));
+  return false;
+};
+
 const handleCreateGroup = async () => {
+  if (!validateDisplayRateMultiplier(createForm.display_rate_multiplier)) return;
   if (!createForm.name.trim()) {
     appStore.showError(t("admin.groups.nameRequired"));
     return;
@@ -5919,6 +5943,7 @@ const handleCreateGroup = async () => {
     // 构建请求数据，包含模型路由配置
     const requestData = {
       ...createGroupForm,
+      display_rate_multiplier: createForm.display_rate_multiplier === '' ? null : createForm.display_rate_multiplier,
       force_openai_fast: normalizeGroupOpenAIFast(
         createForm.platform,
         createForm.force_openai_fast,
@@ -6030,6 +6055,7 @@ const handleCreateGroup = async () => {
           description: createForm.description,
           i18n: createForm.i18n,
           platform: createForm.platform,
+          display_rate_multiplier: requestData.display_rate_multiplier,
         }
       : requestData;
     await adminAPI.groups.create(payload);
@@ -6063,6 +6089,7 @@ const handleEdit = async (group: AdminGroup) => {
   );
   editForm.platform = group.platform;
   editForm.rate_multiplier = group.rate_multiplier;
+  editForm.display_rate_multiplier = group.display_rate_multiplier ?? null;
   editForm.is_exclusive = group.is_exclusive;
   editForm.status = group.status;
   editForm.subscription_type = group.subscription_type || "standard";
@@ -6222,6 +6249,7 @@ const closeEditModal = () => {
 };
 
 const handleUpdateGroup = async () => {
+  if (!validateDisplayRateMultiplier(editForm.display_rate_multiplier)) return;
   if (!editingGroup.value) return;
   if (!editForm.name.trim()) {
     appStore.showError(t("admin.groups.nameRequired"));
@@ -6262,6 +6290,7 @@ const handleUpdateGroup = async () => {
     // 转换 fallback_group_id: null -> 0 (后端使用 0 表示清除)
     const payload = {
       ...editForm,
+      display_rate_multiplier: editForm.display_rate_multiplier === '' ? null : editForm.display_rate_multiplier,
       force_openai_fast: normalizeGroupOpenAIFast(
         editForm.platform,
         editForm.force_openai_fast,
@@ -6387,6 +6416,7 @@ const handleUpdateGroup = async () => {
           name: editForm.name,
           description: editForm.description,
           i18n: editForm.i18n,
+          display_rate_multiplier: payload.display_rate_multiplier,
         }
       : payload;
     await adminAPI.groups.update(editingGroup.value.id, requestData);

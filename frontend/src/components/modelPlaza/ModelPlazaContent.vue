@@ -98,9 +98,9 @@ const descriptionHtml = computed(() => {
   return DOMPurify.sanitize(marked.parse(md) as string)
 })
 
-/** 生效倍率 = 用户专属倍率 ?? 分组默认倍率。 */
+/** 用户筛选按可见倍率；实际价格由定价表独立计算。 */
 function effectiveRate(g: ModelPlazaGroup): number {
-  return g.user_rate_multiplier ?? g.rate_multiplier
+  return g.display_rate_multiplier ?? g.user_rate_multiplier ?? g.rate_multiplier
 }
 
 const platforms = computed(() =>

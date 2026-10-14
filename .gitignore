@@ -182,3 +182,14 @@ issues/
 /backend/internal/handler/token_limits_local_test.go
 /frontend/src/components/admin/user/__tests__/UserTokenQuotaModal.tokenLimits.local.spec.ts
 /frontend/src/views/user/__tests__/KeysView.tokenLimits.local.spec.ts
+
+# Local verification for independent group display multipliers
+/backend/internal/repository/display_rate_local_test.go
+/backend/internal/service/display_rate_local_test.go
+/backend/internal/service/display_rate_public_local_test.go
+/backend/internal/handler/display_rate_public_local_test.go
+/backend/internal/handler/admin/display_rate_local_test.go
+/backend/internal/handler/dto/display_rate_local_test.go
+/frontend/src/components/common/__tests__/GroupDisplay.displayRate.local.spec.ts
+/frontend/src/views/admin/__tests__/GroupsView.displayRate.local.spec.ts
+/frontend/src/views/user/__tests__/UsageView.displayRate.local.spec.ts

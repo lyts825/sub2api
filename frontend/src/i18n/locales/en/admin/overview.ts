@@ -1003,6 +1003,10 @@ export default {
       groupUpdatedSuccess: 'Group updated successfully',
       groupDeletedSuccess: 'Group deleted successfully',
       rateMultiplierHint: 'Cost multiplier for this group (e.g., 1.5 = 150% of base cost)',
+      displayRateMultiplier: 'User display multiplier',
+      displayRateMultiplierPlaceholder: 'Leave blank to use the original display',
+      displayRateMultiplierHint: 'Changes user-facing multiplier labels, including custom user rates. Billing, model unit prices, and charged amounts keep their original rules. Leave blank to restore the original display; 0 is valid.',
+      displayRateMultiplierInvalid: 'Display multiplier must be a finite number from 0 to 999999.9999.',
       exclusiveHint: 'Exclusive group, manually assign to specific users',
       exclusiveTooltip: {
         title: 'What is an exclusive group?',

@@ -979,6 +979,10 @@ export default {
           '公开分组费率 0.8，您可以创建一个费率 0.7 的专属分组，手动分配给 VIP 用户，让他们享受更优惠的价格。'
       },
       rateMultiplierHint: '1.0 = 标准费率，0.5 = 半价，2.0 = 双倍',
+      displayRateMultiplier: '用户展示倍率',
+      displayRateMultiplierPlaceholder: '留空沿用原倍率显示',
+      displayRateMultiplierHint: '仅改变用户侧倍率标签，覆盖专属倍率显示；实际计费、模型单价与扣费金额保持原规则。留空恢复原显示，0 为有效展示值。',
+      displayRateMultiplierInvalid: '展示倍率必须是 0 至 999999.9999 之间的有限数值。',
       platforms: {
         all: '全部平台',
         anthropic: 'Anthropic',

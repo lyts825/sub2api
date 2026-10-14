@@ -1253,6 +1253,10 @@ func init() {
 	groupDescProfitSafetyBuffer := groupFields[63].Descriptor()
 	// group.DefaultProfitSafetyBuffer holds the default value on creation for the profit_safety_buffer field.
 	group.DefaultProfitSafetyBuffer = groupDescProfitSafetyBuffer.Default.(float64)
+	// groupDescDisplayRateMultiplier is the schema descriptor for display_rate_multiplier field.
+	groupDescDisplayRateMultiplier := groupFields[64].Descriptor()
+	// group.DisplayRateMultiplierValidator is a validator for the "display_rate_multiplier" field. It is called by the builders before save.
+	group.DisplayRateMultiplierValidator = groupDescDisplayRateMultiplier.Validators[0].(func(float64) error)
 	idempotencyrecordMixin := schema.IdempotencyRecord{}.Mixin()
 	idempotencyrecordMixinFields0 := idempotencyrecordMixin[0].Fields()
 	_ = idempotencyrecordMixinFields0

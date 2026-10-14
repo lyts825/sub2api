@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -373,7 +374,8 @@ func normalizeCreateGroupInputForSimpleMode(input *CreateGroupInput) {
 	}
 	*input = CreateGroupInput{
 		Name: input.Name, Description: input.Description, I18n: input.I18n, Platform: input.Platform,
-		RateMultiplier: 1, SubscriptionType: SubscriptionTypeStandard,
+		DisplayRateMultiplier: input.DisplayRateMultiplier,
+		RateMultiplier:        1, SubscriptionType: SubscriptionTypeStandard,
 	}
 }
 
@@ -381,10 +383,21 @@ func normalizeUpdateGroupInputForSimpleMode(input *UpdateGroupInput) {
 	if input == nil {
 		return
 	}
-	*input = UpdateGroupInput{Name: input.Name, Description: input.Description, I18n: input.I18n}
+	*input = UpdateGroupInput{Name: input.Name, Description: input.Description, I18n: input.I18n,
+		DisplayRateMultiplier: input.DisplayRateMultiplier, SetDisplayRateMultiplier: input.SetDisplayRateMultiplier}
+}
+
+func validateDisplayRateMultiplier(value *float64) error {
+	if value != nil && (math.IsNaN(*value) || math.IsInf(*value, 0) || *value < 0 || *value > 999999.9999) {
+		return infraerrors.BadRequest("INVALID_DISPLAY_RATE_MULTIPLIER", "display_rate_multiplier must be a finite number between 0 and 999999.9999")
+	}
+	return nil
 }
 
 func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupInput) (*Group, error) {
+	if err := validateDisplayRateMultiplier(input.DisplayRateMultiplier); err != nil {
+		return nil, err
+	}
 	if s.cfg != nil && s.cfg.RunMode == config.RunModeSimple && NormalizeGroupPlatform(input.Platform) == PlatformComposite {
 		return nil, infraerrors.BadRequest("SIMPLE_MODE_GROUP_NOT_BINDABLE", "composite groups are not supported in simple mode")
 	}
@@ -572,6 +585,7 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		I18n:                            i18n,
 		Platform:                        platform,
 		RateMultiplier:                  input.RateMultiplier,
+		DisplayRateMultiplier:           cloneGroupValuePointer(input.DisplayRateMultiplier),
 		IsExclusive:                     input.IsExclusive,
 		Status:                          StatusActive,
 		SubscriptionType:                subscriptionType,
@@ -758,6 +772,11 @@ func (s *adminServiceImpl) validateFallbackGroupOnInvalidRequest(ctx context.Con
 }
 
 func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *UpdateGroupInput) (*Group, error) {
+	if input.SetDisplayRateMultiplier {
+		if err := validateDisplayRateMultiplier(input.DisplayRateMultiplier); err != nil {
+			return nil, err
+		}
+	}
 	group, err := s.groupRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -774,6 +793,9 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 
 	// 渠道缓存里存了 groupID → platform 的映射，改了平台要让它失效（见函数末尾）
 	previousPlatform := group.Platform
+	if input.SetDisplayRateMultiplier {
+		group.DisplayRateMultiplier = cloneGroupValuePointer(input.DisplayRateMultiplier)
+	}
 
 	if input.Name != "" {
 		group.Name = input.Name
