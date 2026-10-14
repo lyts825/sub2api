@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ip"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
@@ -164,9 +166,6 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 			return
 		}
 		ctx := context.WithValue(c.Request.Context(), ctxkey.UserID, apiKey.User.ID)
-		if apiKey.TokenQuota > 0 {
-			ctx = context.WithValue(ctx, ctxkey.APIKeyTokenQuotaEnabled, true)
-		}
 		c.Request = c.Request.WithContext(ctx)
 		billingInfoRequest := c.Request.URL.Path == "/v1/sub2api/billing"
 		// Async image task polling only reads data that already belongs to the
@@ -175,11 +174,14 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 		skipBilling := c.Request.URL.Path == "/v1/usage" || billingInfoRequest || isAsyncImageTaskRead(c.Request.Method, c.Request.URL.Path)
 		if !skipBilling {
 			if err := apiKeyService.CheckTokenQuota(c.Request.Context(), apiKey); err != nil {
-				if errors.Is(err, service.ErrAPIKeyTokenQuotaExhausted) {
+				if service.IsTokenQuotaExceeded(err) {
+					if retry := service.TokenQuotaRetryAfter(err); retry > 0 {
+						c.Header("Retry-After", strconv.Itoa(retry))
+					}
 					if isOpenAICompatibleAPIKeyRequest(c) {
-						abortWithOpenAIQuotaError(c, http.StatusTooManyRequests, "API key token 用量已达上限")
+						abortWithOpenAIQuotaError(c, http.StatusTooManyRequests, infraerrors.Message(err))
 					} else {
-						AbortWithError(c, http.StatusTooManyRequests, "API_KEY_TOKEN_QUOTA_EXHAUSTED", "API key token 用量已达上限")
+						AbortWithError(c, http.StatusTooManyRequests, infraerrors.Reason(err), infraerrors.Message(err))
 					}
 				} else {
 					AbortWithError(c, http.StatusServiceUnavailable, "API_KEY_TOKEN_QUOTA_UNAVAILABLE", "Failed to check API key token quota")
@@ -189,6 +191,10 @@ func apiKeyAuthWithSubscription(apiKeyService *service.APIKeyService, subscripti
 		}
 
 		// ── 4. SimpleMode → early return ─────────────────────────────
+		c.Request = c.Request.WithContext(service.TrackTokenQuotaAccounting(c.Request.Context(), apiKey))
+		if apiKey.HasTokenLimits() {
+			c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), ctxkey.APIKeyTokenQuotaEnabled, true))
+		}
 
 		if cfg.RunMode == config.RunModeSimple {
 			c.Set(string(ContextKeyAPIKey), apiKey)

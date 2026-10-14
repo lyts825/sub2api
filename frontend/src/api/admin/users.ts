@@ -5,7 +5,7 @@
 
 import { apiClient } from '../client'
 import { listPlatformIds } from '@/constants/platformCatalog'
-import type { AccountPlatform, AdminUser, UpdateUserRequest, PaginatedResponse, ApiKey } from '@/types'
+import type { AccountPlatform, AdminUser, UpdateUserRequest, PaginatedResponse, ApiKey, UserTokenQuota } from '@/types'
 
 export interface AdminBindAuthIdentityChannelRequest {
   channel: string
@@ -404,6 +404,19 @@ export async function resetPlatformQuotaWindow(
   return data
 }
 
+export async function getTokenQuota(id: number): Promise<UserTokenQuota> {
+  const { data } = await apiClient.get<UserTokenQuota>(`/admin/users/${id}/token-quota`)
+  return data
+}
+
+export async function updateTokenQuota(
+  id: number,
+  update: { quota?: number; reset_used?: boolean }
+): Promise<UserTokenQuota> {
+  const { data } = await apiClient.put<UserTokenQuota>(`/admin/users/${id}/token-quota`, update)
+  return data
+}
+
 export const usersAPI = {
   list,
   getById,
@@ -422,6 +435,8 @@ export const usersAPI = {
   getPlatformQuotas,
   updatePlatformQuotas,
   resetPlatformQuotaWindow,
+  getTokenQuota,
+  updateTokenQuota,
 }
 
 export default usersAPI

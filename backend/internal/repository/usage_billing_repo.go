@@ -8,6 +8,7 @@ import (
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 )
 
@@ -190,10 +191,7 @@ func (r *usageBillingRepository) applyUsageBillingEffects(ctx context.Context, t
 	// Key 已不存在时跳过其自身的额度/限速计数，其余结算项不受影响。
 	// Token usage is independent of price and shares the billing dedup transaction.
 	if tokens := int64(cmd.InputTokens) + int64(cmd.OutputTokens) + int64(cmd.CacheCreationTokens) + int64(cmd.CacheReadTokens); tokens > 0 {
-		if _, err := tx.ExecContext(ctx, `
-			UPDATE api_keys SET token_quota_used = token_quota_used + $1, updated_at = NOW()
-			WHERE id = $2 AND deleted_at IS NULL
-		`, tokens, cmd.APIKeyID); err != nil {
+		if err := incrementUsageBillingTokens(ctx, tx, cmd.UserID, cmd.APIKeyID, tokens, timezone.Now()); err != nil {
 			return err
 		}
 	}

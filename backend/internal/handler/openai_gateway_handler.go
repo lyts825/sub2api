@@ -2683,22 +2683,20 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 	defer inflightDone()
 	ctx = inflightCtx
 
-	// A WebSocket can outlive its token quota. Recheck limited keys on every
-	// turn, using the refreshed turn snapshot for newly enabled limits. Check only
+	// A WebSocket can outlive its token quota. Refresh all token limits on every
+	// turn, including user quotas enabled after connection setup. Check only
 	// quotas here so standard-mode RPM is not charged twice for the same turn.
 	checkTurnBilling := func(turn int, keys *openAIWSTurnBillingAPIKeys, checkRateLimits bool) error {
-		if keys.forTurn(turn, apiKey).TokenQuota > 0 && h.apiKeyService != nil {
-			quota, used, err := h.apiKeyService.GetTokenQuota(ctx, apiKey.ID)
-			if err != nil {
+		if h.apiKeyService != nil {
+			turnKey := *keys.forTurn(turn, apiKey)
+			if err := h.apiKeyService.CheckTokenQuota(ctx, &turnKey); err != nil {
+				if service.IsTokenQuotaExceeded(err) {
+					return service.NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, "API key token quota exhausted", err)
+				}
 				return service.NewOpenAIWSClientCloseError(coderws.StatusInternalError, "failed to check token quota", err)
-			}
-			if quota > 0 && used >= quota {
-				return service.NewOpenAIWSClientCloseError(coderws.StatusPolicyViolation, "API key token quota exhausted", service.ErrAPIKeyTokenQuotaExhausted)
 			}
 			// Keep this turn's accounting in sync when a limit is enabled or
 			// removed on an already-open simple-mode connection.
-			turnKey := *keys.forTurn(turn, apiKey)
-			turnKey.TokenQuota, turnKey.TokenQuotaUsed = quota, used
 			keys.set(turn, &turnKey)
 		}
 		if !checkRateLimits || h.cfg == nil || h.cfg.RunMode != config.RunModeSimple || !h.cfg.SimpleModeKeyRateLimitEnabled {
@@ -3177,7 +3175,7 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 				turnBillingAPIKey := turnBillingAPIKeys.forTurn(turn, apiKey)
 				cyberBlocked := service.GetOpsCyberPolicy(c) != nil
 				usageCtx := ctx
-				if turnBillingAPIKey.TokenQuota > 0 {
+				if turnBillingAPIKey.HasTokenLimits() {
 					usageCtx = context.WithValue(ctx, ctxkey.APIKeyTokenQuotaEnabled, true)
 				}
 				h.submitOpenAIUsageRecordTask(usageCtx, result, func(taskCtx context.Context) {
@@ -3451,7 +3449,7 @@ func getContextInt64(c *gin.Context, key string) (int64, bool) {
 }
 
 func (h *OpenAIGatewayHandler) submitUsageRecordTask(parent context.Context, task service.UsageRecordTask) {
-	if parent != nil && parent.Value(ctxkey.APIKeyTokenQuotaEnabled) == true {
+	if service.TokenQuotaAccountingRequired(parent) {
 		h.submitMandatoryUsageRecordTask(parent, task)
 		return
 	}

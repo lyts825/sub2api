@@ -365,7 +365,7 @@ func applyUsageBilling(ctx context.Context, requestID string, usageLog *UsageLog
 		if p.SimpleModeKeyRateLimitOnly {
 			return false, ErrSimpleModeKeyRateLimitBillingUnavailable
 		}
-		if p.SimpleModeTokenUsageOnly || p.APIKey != nil && p.APIKey.TokenQuota > 0 {
+		if p.SimpleModeTokenUsageOnly || p.APIKey.HasTokenLimits() {
 			return false, ErrAPIKeyTokenQuotaBillingUnavailable
 		}
 		// The legacy path is only a fallback for standard billing. Simple mode
@@ -862,7 +862,7 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 	}
 
 	simpleModeKeyRateLimitOnly := simpleModeKeyRateLimitBillingEnabled(s.cfg, apiKey)
-	simpleModeTokenUsageOnly := s.cfg != nil && s.cfg.RunMode == config.RunModeSimple && !simpleModeKeyRateLimitOnly && apiKey.TokenQuota > 0 && usageLog.TotalTokens() > 0
+	simpleModeTokenUsageOnly := s.cfg != nil && s.cfg.RunMode == config.RunModeSimple && !simpleModeKeyRateLimitOnly && apiKey.HasTokenLimits() && usageLog.TotalTokens() > 0
 	if s.cfg != nil && s.cfg.RunMode == config.RunModeSimple && !simpleModeKeyRateLimitOnly && !simpleModeTokenUsageOnly {
 		writeUsageLogBestEffort(ctx, s.usageLogRepo, usageLog, "service.gateway")
 		logger.LegacyPrintf("service.gateway", "[SIMPLE MODE] Usage recorded (not billed): user=%d, tokens=%d", usageLog.UserID, usageLog.TotalTokens())

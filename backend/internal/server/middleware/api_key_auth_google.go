@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/googleapi"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ip"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -133,12 +135,12 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subs
 			return
 		}
 
-		if apiKey.TokenQuota > 0 {
-			c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), ctxkey.APIKeyTokenQuotaEnabled, true))
-		}
 		if err := apiKeyService.CheckTokenQuota(c.Request.Context(), apiKey); err != nil {
-			if errors.Is(err, service.ErrAPIKeyTokenQuotaExhausted) {
-				abortWithGoogleError(c, 429, "API key token 用量已达上限")
+			if service.IsTokenQuotaExceeded(err) {
+				if retry := service.TokenQuotaRetryAfter(err); retry > 0 {
+					c.Header("Retry-After", strconv.Itoa(retry))
+				}
+				abortWithGoogleError(c, 429, infraerrors.Message(err))
 			} else {
 				abortWithGoogleError(c, 503, "Failed to check API key token quota")
 			}
@@ -146,6 +148,10 @@ func APIKeyAuthWithSubscriptionGoogle(apiKeyService *service.APIKeyService, subs
 		}
 
 		// 简易模式：跳过余额和订阅检查
+		c.Request = c.Request.WithContext(service.TrackTokenQuotaAccounting(c.Request.Context(), apiKey))
+		if apiKey.HasTokenLimits() {
+			c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), ctxkey.APIKeyTokenQuotaEnabled, true))
+		}
 		if cfg.RunMode == config.RunModeSimple {
 			c.Set(string(ContextKeyAPIKey), apiKey)
 			c.Set(string(ContextKeyUser), AuthSubject{

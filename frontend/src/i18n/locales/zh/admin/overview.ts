@@ -804,6 +804,19 @@ export default {
         keyExists: '属性键已存在',
         dragToReorder: '拖拽排序'
       },
+      tokenQuota: {
+        title: '用户 Token 总限额',
+        subtitle: '管理 {email} 的所有 API Key 共享的累计 Token 限额。',
+        limit: '共享累计 Token 上限',
+        hint: '0 或留空表示不限额。达到上限后该用户的所有 API Key 拒绝后续请求。修改上限不会清零用量；请求结束后计入用量，在途及并发请求可能超额。',
+        loadFailed: '加载用户 Token 限额失败，请关闭后重试',
+        saved: '用户 Token 限额已保存',
+        saveFailed: '保存用户 Token 限额失败',
+        resetTitle: '重置用户共享 Token 用量',
+        resetConfirm: '确定将 {email} 的共享累计 Token 用量（{used}）重置为 0 吗？各 API Key 的累计及周期用量不受影响。尚未保存的上限不会提交，此操作不可撤销。',
+        resetSuccess: '用户共享 Token 用量已重置',
+        resetFailed: '重置用户共享 Token 用量失败'
+      },
       platformQuota: {
         menuItem: '平台限额',
         title: '平台限额',

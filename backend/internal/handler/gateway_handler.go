@@ -1623,19 +1623,17 @@ func (h *GatewayHandler) Usage(c *gin.Context) {
 
 	// Token usage changes after every request; the authentication snapshot is not
 	// authoritative for this counter, including when an exhausted key reads usage.
-	if apiKey.TokenQuota > 0 && h.apiKeyService != nil {
-		quota, used, err := h.apiKeyService.GetTokenQuota(ctx, apiKey.ID)
-		if err != nil {
+	if h.apiKeyService != nil {
+		key := *apiKey
+		if err := h.apiKeyService.RefreshTokenQuota(ctx, &key); err != nil {
 			h.errorResponse(c, http.StatusServiceUnavailable, "api_error", "Failed to read API key token quota")
 			return
 		}
-		key := *apiKey
-		key.TokenQuota, key.TokenQuotaUsed = quota, used
 		apiKey = &key
 	}
 
 	// 判断模式: key 有总额度或速率限制 → quota_limited，否则 → unrestricted
-	isQuotaLimited := apiKey.Quota > 0 || apiKey.TokenQuota > 0 || apiKey.HasRateLimits()
+	isQuotaLimited := apiKey.Quota > 0 || apiKey.HasTokenLimits() || apiKey.HasRateLimits()
 
 	if isQuotaLimited {
 		h.usageQuotaLimited(c, ctx, apiKey, usageData, dailyUsage, modelStats)
@@ -1715,9 +1713,12 @@ func (h *GatewayHandler) buildAPIKeyDailyUsage(c *gin.Context, userID, apiKeyID 
 // usageQuotaLimited 处理 quota_limited 模式的响应
 func (h *GatewayHandler) usageQuotaLimited(c *gin.Context, ctx context.Context, apiKey *service.APIKey, usageData gin.H, dailyUsage any, modelStats any) {
 	resp := gin.H{
-		"mode":    "quota_limited",
-		"isValid": apiKey.Status == service.StatusAPIKeyActive || apiKey.Status == service.StatusAPIKeyQuotaExhausted || apiKey.Status == service.StatusAPIKeyExpired,
-		"status":  apiKey.Status,
+		"mode":             "quota_limited",
+		"isValid":          apiKey.Status == service.StatusAPIKeyActive || apiKey.Status == service.StatusAPIKeyQuotaExhausted || apiKey.Status == service.StatusAPIKeyExpired,
+		"status":           apiKey.Status,
+		"token_limits":     apiKey.TokenLimits,
+		"token_usage":      apiKey.TokenUsage,
+		"user_token_quota": apiKey.UserTokenQuota,
 	}
 
 	// 总额度信息
@@ -2524,8 +2525,8 @@ func billingErrorDetails(err error) (status int, code, message string, retryAfte
 		}
 		return http.StatusServiceUnavailable, "billing_service_error", msg, 0
 	}
-	if errors.Is(err, service.ErrAPIKeyTokenQuotaExhausted) {
-		return http.StatusTooManyRequests, "API_KEY_TOKEN_QUOTA_EXHAUSTED", pkgerrors.Message(err), 0
+	if service.IsTokenQuotaExceeded(err) {
+		return http.StatusTooManyRequests, pkgerrors.Reason(err), pkgerrors.Message(err), service.TokenQuotaRetryAfter(err)
 	}
 	if errors.Is(err, service.ErrAPIKeyRateLimit5hExceeded) {
 		msg := pkgerrors.Message(err)
@@ -2590,7 +2591,7 @@ func (h *GatewayHandler) maybeLogCompatibilityFallbackMetrics(reqLog *zap.Logger
 }
 
 func (h *GatewayHandler) submitUsageRecordTask(parent context.Context, task service.UsageRecordTask) {
-	if parent != nil && parent.Value(ctxkey.APIKeyTokenQuotaEnabled) == true {
+	if service.TokenQuotaAccountingRequired(parent) {
 		h.submitMandatoryUsageRecordTask(parent, task)
 		return
 	}

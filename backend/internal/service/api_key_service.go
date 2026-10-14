@@ -69,6 +69,7 @@ type APIKeyUpdateFields struct {
 	Quota          bool
 	TokenQuota     bool
 	TokenQuotaUsed bool // Explicit reset only; accounting increments this atomically.
+	TokenLimits    bool
 	GroupID        bool
 	ExpiresAt      bool
 	// QuotaUsed 仅供"重置配额用量"路径声明；常规计费走 IncrementQuotaUsed。
@@ -223,9 +224,10 @@ type CreateAPIKeyRequest struct {
 	IPBlacklist []string `json:"ip_blacklist"` // IP 黑名单
 
 	// Quota fields
-	Quota         float64 `json:"quota"`           // Quota limit in USD (0 = unlimited)
-	TokenQuota    int64   `json:"token_quota"`     // Cumulative token limit (0 = unlimited)
-	ExpiresInDays *int    `json:"expires_in_days"` // Days until expiry (nil = never expires)
+	Quota         float64          `json:"quota"`       // Quota limit in USD (0 = unlimited)
+	TokenQuota    int64            `json:"token_quota"` // Cumulative token limit (0 = unlimited)
+	TokenLimits   TokenLimitConfig `json:"token_limits"`
+	ExpiresInDays *int             `json:"expires_in_days"` // Days until expiry (nil = never expires)
 
 	// Rate limit fields (0 = unlimited)
 	RateLimit5h float64 `json:"rate_limit_5h"`
@@ -242,12 +244,13 @@ type UpdateAPIKeyRequest struct {
 	IPBlacklist *[]string `json:"ip_blacklist"` // IP 黑名单（nil 不修改，空数组清空）
 
 	// Quota fields
-	Quota           *float64   `json:"quota"`       // Quota limit in USD (nil = no change, 0 = unlimited)
-	ExpiresAt       *time.Time `json:"expires_at"`  // Expiration time (nil = no change)
-	ClearExpiration bool       `json:"-"`           // Clear expiration (internal use)
-	ResetQuota      *bool      `json:"reset_quota"` // Reset quota_used to 0
-	TokenQuota      *int64     `json:"token_quota"`
-	ResetTokenQuota *bool      `json:"reset_token_quota"`
+	Quota           *float64          `json:"quota"`       // Quota limit in USD (nil = no change, 0 = unlimited)
+	ExpiresAt       *time.Time        `json:"expires_at"`  // Expiration time (nil = no change)
+	ClearExpiration bool              `json:"-"`           // Clear expiration (internal use)
+	ResetQuota      *bool             `json:"reset_quota"` // Reset quota_used to 0
+	TokenQuota      *int64            `json:"token_quota"`
+	ResetTokenQuota *bool             `json:"reset_token_quota"`
+	TokenLimits     *TokenLimitConfig `json:"token_limits"`
 
 	// Rate limit fields (nil = no change, 0 = unlimited)
 	RateLimit5h         *float64 `json:"rate_limit_5h"`
@@ -264,6 +267,9 @@ func validateAPIKeyLimit(v float64) error {
 }
 
 func validateCreateAPIKeyRequest(req CreateAPIKeyRequest) error {
+	if err := req.TokenLimits.Validate(); err != nil {
+		return err
+	}
 	if req.TokenQuota < 0 {
 		return infraerrors.BadRequest("API_KEY_LIMIT_INVALID", "token_quota must be a non-negative integer")
 	}
@@ -279,6 +285,11 @@ func validateCreateAPIKeyRequest(req CreateAPIKeyRequest) error {
 }
 
 func validateUpdateAPIKeyRequest(req UpdateAPIKeyRequest) error {
+	if req.TokenLimits != nil {
+		if err := req.TokenLimits.Validate(); err != nil {
+			return err
+		}
+	}
 	if req.TokenQuota != nil && *req.TokenQuota < 0 {
 		return infraerrors.BadRequest("API_KEY_LIMIT_INVALID", "token_quota must be a non-negative integer")
 	}
@@ -590,6 +601,7 @@ func (s *APIKeyService) Create(ctx context.Context, userID int64, req CreateAPIK
 		Quota:       req.Quota,
 		QuotaUsed:   0,
 		TokenQuota:  req.TokenQuota,
+		TokenLimits: req.TokenLimits,
 		RateLimit5h: req.RateLimit5h,
 		RateLimit1d: req.RateLimit1d,
 		RateLimit7d: req.RateLimit7d,
@@ -608,6 +620,9 @@ func (s *APIKeyService) Create(ctx context.Context, userID int64, req CreateAPIK
 	s.InvalidateAuthCacheByKey(ctx, apiKey.Key)
 	s.compileAPIKeyIPRules(apiKey)
 
+	if err := s.fillTokenQuotaResponse(ctx, apiKey); err != nil {
+		return nil, err
+	}
 	return apiKey, nil
 }
 
@@ -622,6 +637,9 @@ func (s *APIKeyService) List(ctx context.Context, userID int64, params paginatio
 		return nil, nil, fmt.Errorf("list api keys: %w", err)
 	}
 	s.fillCurrentConcurrency(ctx, keys)
+	if err := s.fillTokenQuotaStates(ctx, keys); err != nil {
+		return nil, nil, err
+	}
 	return keys, pagination, nil
 }
 
@@ -637,7 +655,11 @@ func (s *APIKeyService) listByCurrentConcurrency(ctx context.Context, userID int
 	}
 	s.fillCurrentConcurrency(ctx, keys)
 	sortAPIKeysByCurrentConcurrency(keys, params.NormalizedSortOrder(pagination.SortOrderDesc))
-	return paginateAPIKeys(keys, params), apiKeyPaginationResult(int64(len(keys)), params), nil
+	pageKeys := paginateAPIKeys(keys, params)
+	if err := s.fillTokenQuotaStates(ctx, pageKeys); err != nil {
+		return nil, nil, err
+	}
+	return pageKeys, apiKeyPaginationResult(int64(len(keys)), params), nil
 }
 
 func normalizedAPIKeySortBy(sortBy string) string {
@@ -745,6 +767,9 @@ func (s *APIKeyService) GetByID(ctx context.Context, id int64) (*APIKey, error) 
 	s.compileAPIKeyIPRules(apiKey)
 	if apiKey != nil {
 		apiKey.CurrentConcurrency = s.currentConcurrencyForAPIKey(ctx, apiKey.ID)
+	}
+	if err := s.fillTokenQuotaResponse(ctx, apiKey); err != nil {
+		return nil, err
 	}
 	return apiKey, nil
 }
@@ -872,6 +897,10 @@ func (s *APIKeyService) Update(ctx context.Context, id int64, userID int64, req 
 	}
 
 	// Update quota fields
+	if req.TokenLimits != nil {
+		apiKey.TokenLimits = *req.TokenLimits
+		fields.TokenLimits = true
+	}
 	if req.TokenQuota != nil {
 		apiKey.TokenQuota = *req.TokenQuota
 		fields.TokenQuota = true
@@ -963,6 +992,9 @@ func (s *APIKeyService) Update(ctx context.Context, id int64, userID int64, req 
 		_ = s.rateLimitCacheInvalid.InvalidateAPIKeyRateLimit(ctx, apiKey.ID)
 	}
 
+	if err := s.fillTokenQuotaResponse(ctx, apiKey); err != nil {
+		return nil, err
+	}
 	return apiKey, nil
 }
 

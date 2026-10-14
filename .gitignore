@@ -172,3 +172,13 @@ issues/
 /backend/internal/server/middleware/token_quota_local_test.go
 /frontend/src/views/user/__tests__/KeysView.tokenQuota.local.spec.ts
 /frontend/src/api/__tests__/keys.tokenQuota.local.spec.ts
+
+# Local verification for additional token limit modes
+/backend/internal/repository/token_limits_local_test.go
+/backend/internal/service/token_limits_local_test.go
+/backend/internal/service/user_token_quota_local_test.go
+/backend/internal/handler/admin/user_token_quota_local_test.go
+/backend/internal/server/middleware/token_limits_local_test.go
+/backend/internal/handler/token_limits_local_test.go
+/frontend/src/components/admin/user/__tests__/UserTokenQuotaModal.tokenLimits.local.spec.ts
+/frontend/src/views/user/__tests__/KeysView.tokenLimits.local.spec.ts

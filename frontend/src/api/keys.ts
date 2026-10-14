@@ -4,7 +4,7 @@
  */
 
 import { apiClient } from './client'
-import type { ApiKey, CreateApiKeyRequest, UpdateApiKeyRequest, PaginatedResponse } from '@/types'
+import type { ApiKey, CreateApiKeyRequest, UpdateApiKeyRequest, PaginatedResponse, TokenLimits } from '@/types'
 
 /**
  * List all API keys for current user
@@ -56,6 +56,7 @@ export async function getById(id: number): Promise<ApiKey> {
  * @param expiresInDays - Optional days until expiry (undefined = never expires)
  * @param rateLimitData - Optional rate limit fields
  * @param tokenQuota - Optional cumulative token limit (0 = unlimited)
+ * @param tokenLimits - Optional calendar-window token limits (0 = unlimited)
  * @returns Created API key
  */
 export async function create(
@@ -67,7 +68,8 @@ export async function create(
   quota?: number,
   expiresInDays?: number,
   rateLimitData?: { rate_limit_5h?: number; rate_limit_1d?: number; rate_limit_7d?: number },
-  tokenQuota?: number
+  tokenQuota?: number,
+  tokenLimits?: TokenLimits
 ): Promise<ApiKey> {
   const payload: CreateApiKeyRequest = { name }
   if (groupId !== undefined) {
@@ -87,6 +89,9 @@ export async function create(
   }
   if (tokenQuota !== undefined) {
     payload.token_quota = tokenQuota
+  }
+  if (tokenLimits !== undefined) {
+    payload.token_limits = tokenLimits
   }
   if (expiresInDays !== undefined && expiresInDays > 0) {
     payload.expires_in_days = expiresInDays

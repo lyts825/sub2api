@@ -254,6 +254,20 @@
                 </span>
                 <span v-if="isTokenQuotaExhausted(row)" class="ml-1 text-red-500">{{ t('keys.tokenQuotaExhausted') }}</span>
               </div>
+              <template v-for="window in tokenLimitWindows" :key="window">
+                <div v-if="(row.token_limits?.[window] ?? 0) > 0" class="mt-1.5" :title="tokenWindowResetLabel(row, window)">
+                  <span class="text-gray-500 dark:text-gray-400">{{ t(`keys.tokenLimits.${window}`) }}:</span>
+                  <span :class="(row.token_usage?.[window]?.used ?? 0) >= row.token_limits[window] ? 'font-medium text-red-500' : 'font-medium text-gray-900 dark:text-white'">
+                    {{ (row.token_usage?.[window]?.used ?? 0).toLocaleString() }} / {{ row.token_limits[window].toLocaleString() }}
+                  </span>
+                </div>
+              </template>
+              <div v-if="row.user_token_quota && (row.user_token_quota.quota > 0 || row.user_token_quota.used > 0)" class="mt-1.5" :title="t('keys.tokenLimits.sharedHint')">
+                <span class="text-gray-500 dark:text-gray-400">{{ t('keys.tokenLimits.shared') }}:</span>
+                <span :class="row.user_token_quota.quota > 0 && row.user_token_quota.used >= row.user_token_quota.quota ? 'font-medium text-red-500' : 'font-medium text-gray-900 dark:text-white'">
+                  {{ row.user_token_quota.used.toLocaleString() }} / {{ row.user_token_quota.quota > 0 ? row.user_token_quota.quota.toLocaleString() : t('keys.tokenQuotaUnlimited') }}
+                </span>
+              </div>
             </div>
           </template>
 
@@ -773,6 +787,35 @@
           </div>
         </div>
 
+        <div class="space-y-3">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div v-for="window in tokenLimitWindows" :key="window">
+              <label :for="`token-limit-${window}`" class="input-label">{{ t(`keys.tokenLimits.${window}`) }}</label>
+              <input
+                :id="`token-limit-${window}`"
+                v-model.number="formData.token_limits[window]"
+                type="number"
+                step="1"
+                min="0"
+                :max="Number.MAX_SAFE_INTEGER"
+                class="input"
+                :placeholder="t('keys.tokenQuotaPlaceholder')"
+              />
+              <p v-if="showEditModal && selectedKey?.token_usage?.[window]" class="input-hint">
+                {{ t('keys.tokenLimits.used', { used: selectedKey.token_usage[window].used.toLocaleString() }) }}
+                <span class="block">{{ tokenWindowResetLabel(selectedKey, window) }}</span>
+              </p>
+            </div>
+          </div>
+          <p class="input-hint">{{ t('keys.tokenLimits.hint') }}</p>
+          <p v-if="selectedKey?.user_token_quota" class="rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-700 dark:bg-dark-700 dark:text-gray-300">
+            {{ t('keys.tokenLimits.shared') }}:
+            {{ selectedKey.user_token_quota.used.toLocaleString() }} /
+            {{ selectedKey.user_token_quota.quota > 0 ? selectedKey.user_token_quota.quota.toLocaleString() : t('keys.tokenQuotaUnlimited') }}
+            <span class="mt-1 block text-xs text-gray-500 dark:text-gray-400">{{ t('keys.tokenLimits.sharedHint') }}</span>
+          </p>
+        </div>
+
         <!-- Rate Limit Section -->
         <div class="space-y-3">
           <div class="flex items-center justify-between">
@@ -1274,7 +1317,7 @@ import BulkEditKeysModal from '@/components/keys/BulkEditKeysModal.vue'
 	import EndpointPopover from '@/components/keys/EndpointPopover.vue'
 	import GroupBadge from '@/components/common/GroupBadge.vue'
 	import GroupOptionItem from '@/components/common/GroupOptionItem.vue'
-	import type { ApiKey, Group, PublicSettings, SubscriptionType, GroupPlatform, UpdateApiKeyRequest } from '@/types'
+	import type { ApiKey, Group, PublicSettings, SubscriptionType, GroupPlatform, UpdateApiKeyRequest, TokenLimits, TokenLimitWindow } from '@/types'
 import type { Column } from '@/components/common/types'
 import type { BatchApiKeyUsageStats } from '@/api/usage'
 import { formatDateTime } from '@/utils/format'
@@ -1481,6 +1524,13 @@ const setGroupButtonRef = (keyId: number, el: Element | ComponentPublicInstance 
   }
 }
 
+const tokenLimitWindows = ['daily', 'weekly', 'monthly', 'tpm'] as const
+const emptyTokenLimits = (): TokenLimits => ({ daily: 0, weekly: 0, monthly: 0, tpm: 0 })
+const tokenWindowResetLabel = (key: ApiKey, window: TokenLimitWindow) => {
+  const resetsAt = key.token_usage?.[window]?.resets_at
+  return resetsAt ? t('keys.tokenLimits.resetsAt', { time: new Date(resetsAt).toLocaleString() }) : ''
+}
+
 const formData = ref({
   name: '',
   group_id: null as number | null,
@@ -1494,6 +1544,7 @@ const formData = ref({
   enable_quota: false,
   quota: null as number | null,
   token_quota: null as number | null,
+  token_limits: emptyTokenLimits(),
   // Rate limit settings
   enable_rate_limit: false,
   rate_limit_5h: null as number | null,
@@ -1765,6 +1816,7 @@ const editKey = (key: ApiKey) => {
     enable_quota: key.quota > 0,
     quota: key.quota > 0 ? key.quota : null,
     token_quota: key.token_quota || null,
+    token_limits: { ...emptyTokenLimits(), ...key.token_limits },
     enable_rate_limit: (key.rate_limit_5h > 0) || (key.rate_limit_1d > 0) || (key.rate_limit_7d > 0),
     rate_limit_5h: key.rate_limit_5h || null,
     rate_limit_1d: key.rate_limit_1d || null,
@@ -1882,7 +1934,13 @@ const handleSubmit = async () => {
   // Calculate quota value (null/empty/0 = unlimited, stored as 0)
   const quota = formData.value.quota && formData.value.quota > 0 ? formData.value.quota : 0
   const tokenQuota = Number(formData.value.token_quota ?? 0)
-  if (!Number.isSafeInteger(tokenQuota) || tokenQuota < 0) {
+  const tokenLimits: TokenLimits = {
+    daily: Number(formData.value.token_limits.daily ?? 0),
+    weekly: Number(formData.value.token_limits.weekly ?? 0),
+    monthly: Number(formData.value.token_limits.monthly ?? 0),
+    tpm: Number(formData.value.token_limits.tpm ?? 0),
+  }
+  if ([tokenQuota, ...Object.values(tokenLimits)].some(value => !Number.isSafeInteger(value) || value < 0)) {
     appStore.showError(t('keys.tokenQuotaInvalid'))
     return
   }
@@ -1923,6 +1981,7 @@ const handleSubmit = async () => {
         ip_blacklist: ipBlacklist,
         quota: quota,
         token_quota: tokenQuota,
+        token_limits: tokenLimits,
         expires_at: expiresAt,
         rate_limit_5h: rateLimitData.rate_limit_5h,
         rate_limit_1d: rateLimitData.rate_limit_1d,
@@ -1944,7 +2003,8 @@ const handleSubmit = async () => {
         quota,
         expiresInDays,
         rateLimitData,
-        tokenQuota
+        tokenQuota,
+        tokenLimits
       )
       appStore.showSuccess(t('keys.keyCreatedSuccess'))
       // Only advance tour if active, on submit step, and creation succeeded
@@ -2000,6 +2060,7 @@ const closeModals = () => {
     enable_quota: false,
     quota: null,
     token_quota: null,
+    token_limits: emptyTokenLimits(),
     enable_rate_limit: false,
     rate_limit_5h: null,
     rate_limit_1d: null,

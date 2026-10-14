@@ -43,7 +43,19 @@ func (r *apiKeyRepository) activeQuery() *dbent.APIKeyQuery {
 }
 
 func (r *apiKeyRepository) Create(ctx context.Context, key *service.APIKey) error {
-	builder := r.client.APIKey.Create().
+	if !key.TokenLimits.HasLimits() {
+		return r.createAPIKey(ctx, key)
+	}
+	return r.withTokenLimitsTransaction(ctx, func(ctx context.Context) error {
+		if err := r.createAPIKey(ctx, key); err != nil {
+			return err
+		}
+		return r.SetTokenLimits(ctx, key.ID, key.TokenLimits)
+	})
+}
+
+func (r *apiKeyRepository) createAPIKey(ctx context.Context, key *service.APIKey) error {
+	builder := clientFromContext(ctx, r.client).APIKey.Create().
 		SetUserID(key.UserID).
 		SetKey(key.Key).
 		SetName(key.Name).
@@ -247,6 +259,18 @@ func (r *apiKeyRepository) GetByKeyForAuth(ctx context.Context, key string) (*se
 }
 
 func (r *apiKeyRepository) Update(ctx context.Context, key *service.APIKey, fields service.APIKeyUpdateFields) error {
+	if !fields.TokenLimits {
+		return r.updateAPIKey(ctx, key, fields)
+	}
+	return r.withTokenLimitsTransaction(ctx, func(ctx context.Context) error {
+		if err := r.updateAPIKey(ctx, key, fields); err != nil {
+			return err
+		}
+		return r.SetTokenLimits(ctx, key.ID, key.TokenLimits)
+	})
+}
+
+func (r *apiKeyRepository) updateAPIKey(ctx context.Context, key *service.APIKey, fields service.APIKeyUpdateFields) error {
 	// 空掩码代表调用方不改任何列，直接返回，避免产生一次无意义的整行写。
 	if fields.IsEmpty() {
 		return nil

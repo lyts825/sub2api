@@ -807,6 +807,19 @@ export default {
         keyExists: 'Attribute key already exists',
         dragToReorder: 'Drag to reorder'
       },
+      tokenQuota: {
+        title: 'User Token Quota',
+        subtitle: 'Manage the cumulative token limit shared by all API keys for {email}.',
+        limit: 'Shared Cumulative Token Limit',
+        hint: '0 or blank means unlimited. Once reached, all API keys for this user reject later requests. Changing the limit does not reset usage. Usage is recorded after requests finish; in-flight and concurrent requests may exceed the limit.',
+        loadFailed: 'Failed to load user token quota. Close and try again.',
+        saved: 'User token quota saved',
+        saveFailed: 'Failed to save user token quota',
+        resetTitle: 'Reset User Shared Token Usage',
+        resetConfirm: 'Reset shared cumulative token usage ({used}) for {email} to 0? Per-key cumulative and window usage are unaffected. Unsaved limit changes will not be submitted. This cannot be undone.',
+        resetSuccess: 'User shared token usage reset',
+        resetFailed: 'Failed to reset user shared token usage'
+      },
       platformQuota: {
         menuItem: 'Platform Quotas',
         title: 'Platform Quotas',

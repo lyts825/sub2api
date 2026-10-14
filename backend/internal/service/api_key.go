@@ -54,6 +54,10 @@ type APIKey struct {
 	TokenQuota     int64      // Cumulative token limit (0 = unlimited)
 	TokenQuotaUsed int64      // Input + output + cache creation + cache read tokens
 
+	TokenLimits    TokenLimitConfig
+	TokenUsage     TokenWindowUsage
+	UserTokenQuota UserTokenQuota
+
 	// Rate limit fields
 	RateLimit5h   float64    // Rate limit in USD per 5h (0 = unlimited)
 	RateLimit1d   float64    // Rate limit in USD per 1d (0 = unlimited)
